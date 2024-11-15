@@ -8,10 +8,7 @@ require('lib.init')('runtime')
 require('stdlib.event.player').register_events(true)
 
 -- setup events
--- require('scripts.event-setup')
-
--- setup remote interface
--- require('scripts.remote')
+require('scripts.event-setup')
 
 -- other mods code
 require('framework.other-mods').runtime()
