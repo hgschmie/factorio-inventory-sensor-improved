@@ -1,0 +1,18 @@
+{
+  "name": "inventory-sensor-improved",
+  "version": "0.0.1",
+  "title": "Inventory Sensor (Reimagined)",
+  "description": "Shows inventory information of various entities. Reimagined version of the original inventory sensor  by 0ptera.",
+  "author": "hgschmie",
+  "contact": "https://github.com/hgschmie/factorio-inventory-sensor/issues/",
+  "homepage": "https://github.com/hgschmie/factorio-inventory-sensor",
+  "factorio_version": "2.0",
+  "dependencies": [
+    "base >= 2.0.0"
+  ],
+  "package": {
+    "git_publish_branch": "main",
+    "readme": ".portal/README",
+    "sync_portal_details": true
+  }
+}
