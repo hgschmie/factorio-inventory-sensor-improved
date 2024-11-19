@@ -158,14 +158,17 @@ function FrameworkGhostManager:tick()
     end
 end
 
+---@param ghost_names string|string[] One or more names to match to the ghost_name field.
 function FrameworkGhostManager:register_for_ghost_names(ghost_names)
     local event_matcher = tools.create_event_ghost_entity_name_matcher(ghost_names)
-    tools.event_register(tools.CREATION_EVENTS, Framework.ghost_manager.onGhostEntityCreated, event_matcher)
+    tools.event_register(tools.CREATION_EVENTS, self.onGhostEntityCreated, event_matcher)
 end
 
+---@param attribute string The entity attribute to match.
+---@param values string|string[] One or more values to match.
 function FrameworkGhostManager:register_for_ghost_attributes(attribute, values)
     local event_matcher = tools.create_event_ghost_entity_matcher(attribute, values)
-    tools.event_register(tools.CREATION_EVENTS, Framework.ghost_manager.onGhostEntityCreated, event_matcher)
+    tools.event_register(tools.CREATION_EVENTS, self.onGhostEntityCreated, event_matcher)
 end
 
 --- Registers a ghost entity for refresh. The callback will receive the entity and must return
