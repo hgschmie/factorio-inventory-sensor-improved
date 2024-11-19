@@ -44,7 +44,7 @@ if FrameworkLogger.debug_mode then
 end
 
 function FrameworkLogger:updateDebugSettings()
-    local new_debug_mode = Framework.settings:runtime().debug_mode --[[@as boolean]]
+    local new_debug_mode = Framework.settings:runtime_setting('debug_mode') --[[@as boolean]]
 
     if new_debug_mode ~= self.debug_mode then
         self:log('==')
