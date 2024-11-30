@@ -120,11 +120,6 @@ function Player.update_force(event)
     pdata.force = player.force.name
 end
 
-function Player.dump_data()
-    game.write_file(Player.get_file_path('Player/player_data.lua'), 'return ' .. inspect(Player._new_player_data, { longkeys = true, arraykeys = true }))
-    game.write_file(Player.get_file_path('Player/storage.lua'), 'return ' .. inspect(storage.players or nil, { longkeys = true, arraykeys = true }))
-end
-
 function Player.register_init()
     Event.register(Event.core_events.init, Player.init)
     return Player
@@ -134,9 +129,11 @@ function Player.register_events(do_on_init)
     Event.register(defines.events.on_player_created, Player.init)
     Event.register(defines.events.on_player_changed_force, Player.update_force)
     Event.register(defines.events.on_player_removed, Player.remove)
+
     if do_on_init then
         Player.register_init()
     end
+
     return Player
 end
 

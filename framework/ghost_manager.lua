@@ -86,7 +86,7 @@ end
 --- Find all ghosts within a given area. If a ghost is found, pass
 --- it to the callback. If the callback returns a key, move the ghost
 --- into the ghost_entities return array under the given key and remove
---- it from storage. 
+--- it from storage.
 ---
 ---@param area BoundingBox
 ---@param callback fun(ghost: FrameworkAttachedEntity) : any?
