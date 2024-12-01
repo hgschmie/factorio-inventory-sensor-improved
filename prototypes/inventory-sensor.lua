@@ -4,8 +4,6 @@
 
 local const = require('lib.constants')
 
-local item_sounds = require('__base__.prototypes.item_sounds')
-
 ---@type data.ItemPrototype
 local is_item = util.copy(data.raw.item['constant-combinator'])
 
@@ -49,7 +47,6 @@ is_entity.sprites = make_4way_animation_from_spritesheet {
 }
 
 -- EntityPrototype
-
 is_entity.icon = const:png('icon/inventory-sensor')
 is_entity.minable = { mining_time = 0.1, result = const.inventory_sensor_name }
 is_entity.fast_replaceable_group = nil

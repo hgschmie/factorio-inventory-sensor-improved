@@ -12,9 +12,6 @@
 ----------------------------------------------------------------------------------------------------
 
 ---@class InvSensorStorage
----@field is InvSensorData[]
+---@field is InventorySensorData[]
 ---@field count integer
 ---@field VERSION integer
-
----@class InvSensorData
----@field main LuaEntity

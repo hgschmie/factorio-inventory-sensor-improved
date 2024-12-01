@@ -1,13 +1,21 @@
+---@meta
 ----------------------------------------------------------------------------------------------------
 --- Initialize this mod's globals
 ----------------------------------------------------------------------------------------------------
 
 ---@class InvSensorModThis
 ---@field other_mods table<string, string>
----@field InvSensor InventorySensor
+---@field SensorController InventorySensorController
 local This = {
-    InventorySensor = require('scripts.inventory-sensor'),
+    other_mods = {
+        PickerDollies = 'picker-dollies',
+        ['even-pickier-dollies'] = 'picker-dollies',
+    },
+
+    SensorController = require('scripts.controller'),
 }
+
+Framework.settings:add_defaults(require('scripts.settings'))
 
 ----------------------------------------------------------------------------------------------------
 
