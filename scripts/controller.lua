@@ -3,18 +3,14 @@
 -- Inventory Sensor main code
 ------------------------------------------------------------------------
 
-local Is = require('stdlib.utils.is')
-local table = require('stdlib.utils.table')
-local tools = require('framework.tools')
-
 local const = require('lib.constants')
 
 local Sensor = require('scripts.sensor')
 
+------------------------------------------------------------------------
+
 ---@class InventorySensorController
 local InventorySensorController = {}
-
-------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
 -- init setup
@@ -104,7 +100,7 @@ end
 
 --@param unit_number integer
 function InventorySensorController:destroy(unit_number)
-    local is_data = self:entity(unit_number)
+    local is_data = self:entity(unit_number) --[[@as InventorySensorData ]]
     if not is_data then return end
 
     is_data:destroy()
@@ -117,11 +113,12 @@ end
 
 --@param unit_number integer
 function InventorySensorController:move(unit_number)
-    local is_data = self:entity(unit_number)
+    local is_data = self:entity(unit_number) --[[@as InventorySensorData ]]
     if not is_data then return end
 
     is_data:scan(true)
 end
 
+----------------------------------------------------------------------------------------------------
 
 return InventorySensorController

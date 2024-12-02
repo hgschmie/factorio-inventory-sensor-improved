@@ -5,6 +5,20 @@
 -- can be loaded into scripts and data
 ------------------------------------------------------------------------
 
+local Area = require('stdlib.area.area')
+
+--------------------------------------------------------------------------------
+-- globals
+--------------------------------------------------------------------------------
+
+---@enum scan_frequency
+scan_frequency = scan_frequency or {
+    stationary = 300, -- scan every five seconds
+    mobile = 30,      -- scan every 1/2 of a second
+    empty = 120       -- scan every 2 seconds
+}
+
+
 local Constants = {}
 
 --------------------------------------------------------------------------------
@@ -67,7 +81,12 @@ Constants.inventory_sensor_name = Constants:with_prefix(Constants.name)
 -- Base name
 Constants.inventory_sensor_name = Constants:with_prefix(Constants.name)
 
--- supported entities
+Constants.normalized_area = {
+    [defines.direction.north] = Area.normalize { left_top = { x = -1, y = 1 }, right_bottom = { x = 1, y = 0 }, },
+    [defines.direction.east] = Area.normalize { left_top = { x = -1, y = 1 }, right_bottom = { x = 0, y = -1 }, },
+    [defines.direction.south] = Area.normalize { left_top = { x = -1, y = 0 }, right_bottom = { x = 1, y = -1 }, },
+    [defines.direction.west] = Area.normalize { left_top = { x = 0, y = 1 }, right_bottom = { x = 1, y = -1 }, },
+}
 
 --------------------------------------------------------------------------------
 -- settings
