@@ -89,6 +89,16 @@ local function onConfigurationChanged(changed)
             end
         end
     end
+
+    for _, entity in pairs(This.SensorController:entities()) do
+        if not entity.config then
+            entity.config = {
+                enabled = true,
+                status = entity.sensor_entity.status,
+                scan_entity_id = entity.scan_entity and entity.scan_entity.unit_number,
+            }
+        end
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -106,12 +116,10 @@ local function onTick()
     else
         repeat
             index = next(entities, index)
-            local entity = This.SensorController:entity(index) -- do not use second return value of next, it is missing the metatable
+            local entity = This.SensorController:entity(index) --[[@as InventorySensorData ]] -- do not use second return value of next, it is missing the metatable
             if entity then
                 if Is.Valid(entity.sensor_entity) then
-                    local scanned = entity:scan()
-                    local loaded = entity:load()
-                    if scanned or loaded then
+                    if entity:tick() then
                         process_count = process_count - 1
                     end
                 else

@@ -108,7 +108,8 @@ Constants.settings_scan_range = Constants:with_prefix(Constants.settings_scan_ra
 -- localization
 --------------------------------------------------------------------------------
 
-Constants.is_entity_name = 'entity-name.' .. Constants.inventory_sensor_name
-
+Constants.locale = {
+    entity_name = 'entity-name.' .. Constants.inventory_sensor_name
+}
 --------------------------------------------------------------------------------
 return Constants

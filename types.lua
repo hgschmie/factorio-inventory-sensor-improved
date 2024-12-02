@@ -15,10 +15,17 @@
 ---@field interval scan_frequency,
 ---@field inventories defines.inventory[]
 
+---@class InventorySensorConfig
+---@field enabled boolean
+---@field status defines.entity_status
+---@field scan_entity_id integer?
+
+
 ---@class InventorySensorData: InventorySensor
 ---@field sensor_entity LuaEntity
 ---@field tags Tags?
 ---@field debug boolean
+---@field config InventorySensorConfig
 ---@field scan_area BoundingBox?
 ---@field scan_entity LuaEntity?
 ---@field scan_controller ISDataController?

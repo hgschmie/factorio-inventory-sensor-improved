@@ -38,7 +38,11 @@ function InventorySensor.new(sensor_entity, tags)
     local data = {
         sensor_entity = sensor_entity,
         tags = tags,
-        debug = Framework.settings:runtime_setting('debug_mode') --[[@as boolean ]]
+        debug = Framework.settings:runtime_setting('debug_mode') --[[@as boolean ]],
+        config = {
+            enabled = true,
+            status = sensor_entity.status,
+        },
     }
 
     InventorySensor.enhance(data)
@@ -228,6 +232,7 @@ function InventorySensor:connect(entity)
     self.scan_entity = entity
     self.scan_controller = scan_controller
     self.scan_interval = self.scan_controller.interval or scan_frequency.stationary -- unset scan interval -> stationary
+    self.config.scan_entity_id = entity.unit_number
 
     self:load(true)
 
@@ -251,6 +256,7 @@ function InventorySensor:disconnect()
     self.scan_entity = nil
     self.scan_controller = nil
     self.scan_interval = nil
+    self.config.scan_entity_id = nil
 
     self:clear()
 
@@ -262,6 +268,28 @@ function InventorySensor:disconnect()
             right_bottom = self.scan_area.right_bottom,
             time_to_live = 10,
         }
+    end
+end
+
+----------------------------------------------------------------------------------------------------
+-- ticker
+----------------------------------------------------------------------------------------------------
+
+---@param self InventorySensorData
+---@return boolean if entity was either scanned or loaded
+function InventorySensor:tick()
+
+    if not Is.Valid(self.sensor_entity) then
+        self.config.enabled = false
+        self.config.status = defines.entity_status.marked_for_deconstruction
+        return false
+    else
+        local old_status = self.config.status
+        self.config.status = self.sensor_entity.status
+
+        local scanned = self:scan()
+        local loaded = self:load()
+        return scanned or loaded
     end
 end
 

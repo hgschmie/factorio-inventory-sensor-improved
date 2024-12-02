@@ -6,6 +6,7 @@
 ---@class InvSensorModThis
 ---@field other_mods table<string, string>
 ---@field SensorController InventorySensorController
+---@field gui InventorySensorGui?
 local This = {
     other_mods = {
         PickerDollies = 'picker-dollies',
@@ -13,7 +14,14 @@ local This = {
     },
 
     SensorController = require('scripts.controller'),
+    gui = nil,
 }
+
+function This:this_runtime()
+    if script then
+        This.gui = This.gui or require('scripts.gui') --[[@as InventorySensorGui ]]
+    end
+end
 
 Framework.settings:add_defaults(require('scripts.settings'))
 
