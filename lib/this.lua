@@ -11,6 +11,7 @@ local This = {
     other_mods = {
         PickerDollies = 'picker-dollies',
         ['even-pickier-dollies'] = 'picker-dollies',
+        ['Inventory Sensor'] = 'inventory-sensor',
     },
 
     SensorController = require('scripts.controller'),
