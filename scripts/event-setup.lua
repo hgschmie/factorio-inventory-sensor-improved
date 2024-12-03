@@ -8,6 +8,8 @@ local Is = require('stdlib.utils.is')
 local tools = require('framework.tools')
 local const = require('lib.constants')
 
+local Gui = require('scripts.gui')
+
 
 --------------------------------------------------------------------------------
 -- mod init/load code
@@ -54,7 +56,10 @@ local function onEntityDeleted(event)
     local entity = event and event.entity
     if not entity then return end
 
-    This.SensorController:destroy(entity.unit_number)
+    local unit_number = entity.unit_number
+
+    This.SensorController:destroy(unit_number)
+    Gui.closeByEntity(unit_number)
 end
 
 ---@param event EventData.on_object_destroyed
@@ -64,6 +69,7 @@ local function onEntityDestroyed(event)
     if is_entity then
         -- main entity destroyed
         This.SensorController:destroy(event.useful_id)
+        Gui.closeByEntity(event.useful_id)
     end
 end
 

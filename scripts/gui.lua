@@ -112,6 +112,43 @@ function Gui.getUi(is_entity)
     }
 end
 
+---@param player_index integer?
+function Gui.closeByPlayer(player_index)
+    if not player_index then return end
+
+    local player, player_data = Player.get(player_index)
+    if not player then return end
+
+    local gui = player_data.is_gui
+
+    if (gui) then
+        if player.opened == player_data.is_gui.gui.root then
+            player.opened = nil
+        end
+
+        Event.remove(-1, Gui.guiUpdater, nil, gui)
+        player_data.is_gui = nil
+
+        if gui.gui then
+            Framework.gui_manager:destroy_gui(gui.gui)
+        end
+    end
+end
+
+---@param unit_number integer?
+function Gui.closeByEntity(unit_number)
+    if not unit_number then return end
+
+    for _, player in pairs(game.players) do
+        if player.opened then
+            local player_data = Player.pdata(player.index)
+            if player_data and player_data.is_gui and player_data.is_gui.is_id == unit_number then
+                Gui.closeByPlayer(player.index)
+            end
+        end
+    end
+end
+
 ----------------------------------------------------------------------------------------------------
 -- UI Callbacks
 ----------------------------------------------------------------------------------------------------
@@ -131,22 +168,7 @@ end
 ---
 ---@param event EventData.on_gui_click|EventData.on_gui_opened
 function Gui.onWindowClosed(event)
-    local player, player_data = Player.get(event.player_index)
-
-    local gui = player_data.is_gui
-
-    if (gui) then
-        if player.opened == player_data.is_gui.gui.root then
-            player.opened = nil
-        end
-
-        Event.remove(-1, Gui.guiUpdater, nil, gui)
-        player_data.is_gui = nil
-
-        if gui.gui then
-            Framework.gui_manager:destroy_gui(gui.gui)
-        end
-    end
+    Gui.closeByPlayer(event.player_index)
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -192,12 +214,10 @@ end
 ---@param event EventData.on_gui_opened
 function Gui.onGuiOpened(event)
     local player, player_data = Player.get(event.player_index)
-    if player.opened and player_data.is_gui and player.opened == player_data.is_gui.gui.root then
-        player.opened = nil
-    end
+    if not (player and player_data) then return end
 
     -- close an eventually open gui
-    Gui.onWindowClosed(event)
+    Gui.closeByPlayer(event.player_index)
 
     local entity = event and event.entity --[[@as LuaEntity]]
     local is_id = entity.unit_number --[[@as integer]]
@@ -227,12 +247,21 @@ function Gui.onGuiOpened(event)
     player.opened = gui.root
 end
 
+function Gui.onGhostGuiOpened(event)
+    local player, player_data = Player.get(event.player_index)
+    if not (player and player_data) then return end
+
+    player.opened = nil
+end
+
 ----------------------------------------------------------------------------------------------------
 -- Event registration
 ----------------------------------------------------------------------------------------------------
 
 local match_inventory_sensor = tools.create_event_entity_matcher('name', const.inventory_sensor_name)
+local match_ghost_inventory_sensor = tools.create_event_ghost_entity_matcher('ghost_name', const.inventory_sensor_name)
 
 Event.on_event(defines.events.on_gui_opened, Gui.onGuiOpened, match_inventory_sensor)
+Event.on_event(defines.events.on_gui_opened, Gui.onGhostGuiOpened, match_ghost_inventory_sensor)
 
 return Gui
