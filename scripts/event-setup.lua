@@ -106,7 +106,7 @@ end
 --------------------------------------------------------------------------------
 
 local function onTick()
-    local interval = Framework.settings:startup_setting(const.settings_update_interval_name) or 10
+    local interval = Framework.settings:runtime_setting(const.settings_update_interval_name) or 10
     local entities = This.SensorController:entities()
     local process_count = math.ceil(table_size(entities) / interval)
     local index = storage.last_tick_entity

@@ -31,7 +31,7 @@ local FrameworkSettings = {
     }
 }
 
----@type table<string, FrameworkSettingsProvider>
+---@type table<FrameworkSettings.name, FrameworkSettingsProvider>
 local settings_table = {
     startup = {
         values = nil,
@@ -44,6 +44,7 @@ local settings_table = {
     runtime = {
         values = nil,
         load_value = function(name) return settings.global[name] end,
+        store_value = function(name, value) settings.global[name] = { value = value } end,
         get_values = function(self) return self.values end,
         set_values = function(self, values) self.values = values end,
         clear = function(self) self.values = nil end,
@@ -56,6 +57,13 @@ local settings_table = {
                 return settings.get_player_settings(player_index)[name]
             else
                 return settings.player_default[name]
+            end
+        end,
+        store_value = function(name, value, player_index)
+            if player_index then
+                game.players[player_index].mod_settings[name] = { value = value }
+            else
+                settings.player_default[name] = { value = value }
             end
         end,
         get_values = function(self, player_index)
@@ -111,6 +119,18 @@ function FrameworkSettings:get_settings(setting_type, player_index)
     return settings_group:get_values(player_index) or error('Failed to load ' .. setting_type .. ' settings.')
 end
 
+---@param setting_type FrameworkSettings.name Setting setting_type. Valid values are "startup", "runtime" and "player"
+---@param name string
+---@param value FrameworkSettingValue
+---@param player_index integer? The current player index.
+function FrameworkSettings:set_setting(setting_type, name, value, player_index)
+    local settings_group = settings_table[setting_type]
+    if settings_group.store_value then
+        settings_group.store_value(name, value, player_index)
+        settings_group:clear(player_index)
+    end
+end
+
 --- Flushes all cached settings.
 --- The next access to a setting will reload them from the game.
 function FrameworkSettings:flush()
@@ -140,9 +160,14 @@ end
 
 --- Access a single runtime setting.
 ---@param name string
+---@param new_value FrameworkSettingValue?
 ---@return FrameworkSettingValue? result
-function FrameworkSettings:runtime_setting(name)
-    return self:runtime_settings()[name]
+function FrameworkSettings:runtime_setting(name, new_value)
+    local value = self:runtime_settings()[name]
+    if new_value ~= nil then
+        self:set_setting('runtime', name, new_value)
+    end
+    return value
 end
 
 --- Access the player settings. If no player index is given, use the default player settings in settings.player.
@@ -155,9 +180,14 @@ end
 --- Access a single player settings. If no player index is given, use the default player settings in settings.player.
 ---@param name string
 ---@param player_index integer? The current player index.
+---@param new_value FrameworkSettingValue?
 ---@return FrameworkSettingValue? result
-function FrameworkSettings:player_setting(name, player_index)
-    return self:player_settings(player_index)[name]
+function FrameworkSettings:player_setting(name, player_index, new_value)
+    local value = self:player_settings(player_index)[name]
+    if new_value ~= nil then
+        self:set_setting('player', name, new_value, player_index)
+    end
+    return value
 end
 
 ----------------------------------------------------------------------------------------------------

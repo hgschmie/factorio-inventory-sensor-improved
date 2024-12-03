@@ -75,6 +75,7 @@
 ---@class FrameworkSettingsProvider
 ---@field values FrameworkSettingsStorage
 ---@field load_value fun(name: string, player_index: integer?): ModSetting?
+---@field store_value fun(name: string, value: FrameworkSettingValue, player_index: integer?)?
 ---@field get_values fun(self: FrameworkSettingsProvider, player_index: integer?): FrameworkSettingsStorage
 ---@field set_values fun(self: FrameworkSettingsProvider, values: table<string, FrameworkSettingValue?>, player_index: integer?)
 ---@field clear fun(self: FrameworkSettingsProvider, player_index: integer?)
