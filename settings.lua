@@ -7,7 +7,7 @@ data:extend({
         type = "int-setting",
         name = const.settings_update_interval,
         order = "aa",
-        setting_type = "startup",
+        setting_type = "runtime-global",
         default_value = 10,
         minimum_value = 1,
         maximum_value = 216000, -- 1h
@@ -44,11 +44,11 @@ data:extend({
     },
     {
         -- Debug mode (framework dependency)
-        setting_type = "runtime-global",
-        name = Framework.PREFIX .. 'debug-mode',
         type = "bool-setting",
+        name = Framework.PREFIX .. 'debug-mode',
+        order = "z",
+        setting_type = "runtime-global",
         default_value = false,
-        order = "z"
     },
 })
 

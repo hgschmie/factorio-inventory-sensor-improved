@@ -171,7 +171,7 @@ end
 ---@return boolean entity was loaded
 function InventorySensor:load(force)
     local load_time = self.load_time or 0
-    if not (force or (game.tick - load_time >= Framework.settings:startup_setting(const.settings_update_interval_name))) then return false end
+    if not (force or (game.tick - load_time >= Framework.settings:runtime_setting(const.settings_update_interval_name))) then return false end
     self.load_time = game.tick
 
     local control = self:clear()

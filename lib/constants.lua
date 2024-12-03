@@ -97,12 +97,14 @@ Constants.settings_find_entity_interval_name = 'find_entity_interval'
 Constants.settings_read_equipment_grid_name = 'read_equipment_grid'
 Constants.settings_scan_offset_name = 'scan_offset'
 Constants.settings_scan_range_name = 'scan_range'
+Constants.settings_update_inventory_sensors_name = 'update_inventory_sensors'
 
 Constants.settings_update_interval = Constants:with_prefix(Constants.settings_update_interval_name)
 Constants.settings_find_entity_interval = Constants:with_prefix(Constants.settings_find_entity_interval_name)
 Constants.settings_read_equipment_grid = Constants:with_prefix(Constants.settings_read_equipment_grid_name)
 Constants.settings_scan_offset = Constants:with_prefix(Constants.settings_scan_offset_name)
 Constants.settings_scan_range = Constants:with_prefix(Constants.settings_scan_range_name)
+Constants.settings_update_inventory_sensors = Constants:with_prefix(Constants.settings_update_inventory_sensors_name)
 
 --------------------------------------------------------------------------------
 -- localization
