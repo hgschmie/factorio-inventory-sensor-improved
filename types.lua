@@ -13,7 +13,9 @@
 
 ---@class ISDataController
 ---@field interval scan_frequency,
----@field inventories defines.inventory[]
+---@field inventories defines.inventory[]?
+---@field validate (fun(entity: LuaEntity): boolean)?
+---@field signals table<string, integer>?
 
 ---@class InventorySensorConfig
 ---@field enabled boolean
@@ -28,7 +30,6 @@
 ---@field config InventorySensorConfig
 ---@field scan_area BoundingBox?
 ---@field scan_entity LuaEntity?
----@field scan_controller ISDataController?
 ---@field scan_interval integer?
 ---@field scan_time integer?
 ---@field load_time integer?

@@ -12,12 +12,11 @@ local Area = require('stdlib.area.area')
 --------------------------------------------------------------------------------
 
 ---@enum scan_frequency
-scan_frequency = scan_frequency or {
+scan_frequency = {
     stationary = 300, -- scan every five seconds
     mobile = 30,      -- scan every 1/2 of a second
     empty = 120       -- scan every 2 seconds
 }
-
 
 local Constants = {}
 
@@ -86,6 +85,18 @@ Constants.normalized_area = {
     [defines.direction.east] = Area.normalize { left_top = { x = -1, y = 1 }, right_bottom = { x = 0, y = -1 }, },
     [defines.direction.south] = Area.normalize { left_top = { x = -1, y = 0 }, right_bottom = { x = 1, y = -1 }, },
     [defines.direction.west] = Area.normalize { left_top = { x = 0, y = 1 }, right_bottom = { x = 1, y = -1 }, },
+}
+
+Constants.signal_names = {
+    progress_signal = 'inv-sensor-progress',
+    temperature_signal = 'inv-sensor-temperature',
+    fuel_signal = 'inv-sensor-fuel',
+    car_detected_signal = 'inv-sensor-detected-car',
+    tank_detected_signal = 'inv-sensor-detected-tank',
+    spider_detected_signal = 'inv-sensor-detected-spider',
+    wagon_detected_signal = 'inv-sensor-detected-wagon',
+    locomotive_detected_signal = 'inv-sensor-detected-locomotive',
+
 }
 
 --------------------------------------------------------------------------------

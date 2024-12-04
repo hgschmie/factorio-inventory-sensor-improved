@@ -9,12 +9,33 @@ local Is = require('stdlib.utils.is')
 local Area = require('stdlib.area.area')
 
 ---@type ISSupportedEntities
-local is_entities = require('scripts.supported_entities')
+local is_entities = require('scripts.supported-entities')
 
 ------------------------------------------------------------------------
 
 ---@class InventorySensor
 local InventorySensor = {}
+
+----------------------------------------------------------------------------------------------------
+-- helpers
+----------------------------------------------------------------------------------------------------
+
+---@param entity LuaEntity?
+---@return ISDataController?
+local function locate_scan_controller(entity)
+    if not Is.Valid(entity) then return nil end
+
+    assert(entity)
+    local scan_controller = is_entities.supported_entities[entity.type] and
+    (is_entities.supported_entities[entity.type][entity.name] or is_entities.supported_entities[entity.type]['*'])
+
+    if not scan_controller then return nil end
+
+    -- if there is a validate function, it must pass
+    if scan_controller.validate and not scan_controller.validate(entity) then return nil end
+
+    return scan_controller
+end
 
 ----------------------------------------------------------------------------------------------------
 -- create/destroy
@@ -33,7 +54,6 @@ local InventorySensor = {}
 ---@param tags Tags?
 ---@return InventorySensorData
 function InventorySensor.new(sensor_entity, tags)
-
     ---@type InventorySensorData
     local data = {
         sensor_entity = sensor_entity,
@@ -66,6 +86,7 @@ function InventorySensor:destroy()
 end
 
 ---@param self InventorySensorData
+---@param unit_number integer
 function InventorySensor:validate(unit_number)
     return Is.Valid(self.sensor_entity) and self.sensor_entity.unit_number == unit_number
 end
@@ -141,14 +162,28 @@ end
 ----------------------------------------------------------------------------------------------------
 
 ---@param self InventorySensorData
+---@param scan_controller ISDataController
 ---@param sink fun(filter: LogisticFilter)
-local function load_inventory(self, sink)
-    for _, inventory in pairs(self.scan_controller.inventories) do
+local function load_inventory(self, scan_controller, sink)
+    if not scan_controller.inventories then return end
+
+    for _, inventory in pairs(scan_controller.inventories) do
         local inventory_items = self.scan_entity.get_inventory(inventory)
         assert(inventory_items)
         for _, item in pairs(inventory_items.get_contents()) do
             sink { value = { name = item.name, type = 'item', quality = item.quality or 'normal' }, min = item.count }
         end
+    end
+end
+
+---@param self InventorySensorData
+---@param scan_controller ISDataController
+---@param sink fun(filter: LogisticFilter)
+local function add_signals(self, scan_controller, sink)
+    if not scan_controller.signals then return end
+
+    for name, value in pairs(scan_controller.signals) do
+        sink { value = { name = name, type = 'virtual', quality = 'normal' }, min = value }
     end
 end
 
@@ -177,7 +212,8 @@ function InventorySensor:load(force)
     local control = self:clear()
 
     if not Is.Valid(self.scan_entity) then return false end
-    if not self.scan_controller then return false end
+    local scan_controller = locate_scan_controller(self.scan_entity)
+    if not scan_controller then return false end
 
     ---@type LuaLogisticSection?
     local section
@@ -201,7 +237,11 @@ function InventorySensor:load(force)
         idx = idx + 1
     end
 
-    load_inventory(self, populate_callback)
+    -- load inventory for the entity
+    load_inventory(self, scan_controller, populate_callback)
+
+    -- add entity specific signals
+    add_signals(self, scan_controller, populate_callback)
 
     if self.debug then
         rendering.draw_rectangle {
@@ -224,14 +264,16 @@ end
 ---@param entity LuaEntity
 ---@return boolean connected
 function InventorySensor:connect(entity)
-    local scan_controller = is_entities.supported_entities[entity.type]
-    if not (Is.Valid(entity) and scan_controller and not is_entities.blacklist[entity.name]) then return false end
+    if not Is.Valid(entity) then return false end
+    if is_entities.blacklist[entity.name] then return false end
+
+    local scan_controller = locate_scan_controller(entity)
+    if not scan_controller then return false end
 
     local connect_event = self.scan_entity == nil or self.scan_entity.unit_number ~= entity.unit_number
 
     self.scan_entity = entity
-    self.scan_controller = scan_controller
-    self.scan_interval = self.scan_controller.interval or scan_frequency.stationary -- unset scan interval -> stationary
+    self.scan_interval = scan_controller.interval or scan_frequency.stationary -- unset scan interval -> stationary
     self.config.scan_entity_id = entity.unit_number
 
     self:load(true)
@@ -251,16 +293,15 @@ end
 
 ---@param self InventorySensorData
 function InventorySensor:disconnect()
-    local disconnect_event = self.scan_entity ~= nil
+    if not self.scan_entity then return end
 
     self.scan_entity = nil
-    self.scan_controller = nil
     self.scan_interval = nil
     self.config.scan_entity_id = nil
 
     self:clear()
 
-    if self.debug and disconnect_event then
+    if self.debug then
         rendering.draw_rectangle {
             color = { r = 1, g = 0.3, b = 0.3 },
             surface = self.sensor_entity.surface,
@@ -278,7 +319,6 @@ end
 ---@param self InventorySensorData
 ---@return boolean if entity was either scanned or loaded
 function InventorySensor:tick()
-
     if not Is.Valid(self.sensor_entity) then
         self.config.enabled = false
         self.config.status = defines.entity_status.marked_for_deconstruction
