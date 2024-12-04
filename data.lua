@@ -10,6 +10,7 @@ local const = require('lib.constants')
 
 require('prototypes.inventory-sensor')
 require('prototypes.misc')
+require('prototypes.signals')
 
 ------------------------------------------------------------------------
 require('framework.other-mods').data()
