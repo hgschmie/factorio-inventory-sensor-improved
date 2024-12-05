@@ -83,8 +83,6 @@ end
 ---@param main_entity LuaEntity
 ---@param tags Tags?
 function InventorySensorController:create(main_entity, tags)
-    -- todo - change once we have a gui
-    main_entity.operable = false
     main_entity.rotatable = true
 
     local sensor_entity = Sensor.new(main_entity, tags)

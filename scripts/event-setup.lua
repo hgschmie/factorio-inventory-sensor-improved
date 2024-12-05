@@ -104,6 +104,7 @@ local function onConfigurationChanged(changed)
                 scan_entity_id = entity.scan_entity and entity.scan_entity.unit_number,
             }
         end
+        entity.sensor_entity.operable = true
     end
 end
 

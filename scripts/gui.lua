@@ -36,7 +36,7 @@ function Gui.getUi(is_entity)
                     {
                         type = 'label',
                         style = 'frame_title',
-                        caption = { const.locale.entity_name },
+                        caption = { 'entity-name.' .. const.inventory_sensor_name },
                         drag_target = 'gui_root',
                         ignored_by_interaction = true,
                     },
@@ -81,7 +81,6 @@ function Gui.getUi(is_entity)
                                     },
                                     {
                                         type = 'empty-widget',
-                                        name = 'spacer',
                                         style_mods = { horizontally_stretchable = true },
                                     },
                                     {
@@ -101,6 +100,58 @@ function Gui.getUi(is_entity)
                                         name = 'preview',
                                         style = 'wide_entity_button',
                                         elem_mods = { entity = is_entity.sensor_entity },
+                                        style_mods = { width = 400, },
+                                    },
+                                },
+                            },
+                            {
+                                type = 'label',
+                                style = 'semibold_label',
+                                caption = { 'gui-constant.output' },
+                            },
+                            {
+                                type = 'switch',
+                                name = 'on-off',
+                                right_label_caption = { 'gui-constant.on' },
+                                left_label_caption = { 'gui-constant.off' },
+                                handler = { [defines.events.on_gui_switch_state_changed] = Gui.onSwitchEnabled },
+                            },
+                            {
+                                type = 'flow',
+                                style = 'framework_indicator_flow',
+                                children = {
+                                    {
+                                        type = 'label',
+                                        style = 'semibold_label',
+                                        caption = { const:locale('inv-status-label') },
+                                    },
+                                    {
+                                        type = 'label',
+                                        style = 'label',
+                                        name = 'inv-status',
+                                    },
+                                    {
+                                        type = 'empty-widget',
+                                        style_mods = { horizontally_stretchable = true },
+                                    },
+                                },
+                            },
+                            {
+                                type = 'scroll-pane',
+                                style = 'logistic_sections_scroll_pane',
+                                direction = 'vertical',
+                                name = 'signal-view-pane',
+                                visible = false,
+                                vertical_scroll_policy = 'auto-and-reserve-space',
+                                horizontal_scroll_policy = 'never',
+                                style_mods = {
+                                    horizontally_stretchable = true,
+                                },
+                                children = {
+                                    {
+                                        type = 'table',
+                                        name = 'signal-view',
+                                        column_count = 10,
                                     },
                                 },
                             },
@@ -111,6 +162,73 @@ function Gui.getUi(is_entity)
         },
     }
 end
+
+----------------------------------------------------------------------------------------------------
+-- helpers
+----------------------------------------------------------------------------------------------------
+
+---@param is_entity InventorySensorData?
+---@param gui FrameworkGui
+function Gui.renderPreview(is_entity, gui)
+    if not is_entity then return end
+
+    local signal_view = gui:find_element('signal-view')
+    assert(signal_view)
+    local signal_view_pane = gui:find_element('signal-view-pane')
+    assert(signal_view_pane)
+
+    for _, c in pairs(signal_view.children) do c.destroy() end
+
+    local control = is_entity.sensor_entity.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior ]]
+
+    if is_entity.config.enabled and control.sections_count > 0 and control.sections[1].filters_count > 0 then
+        signal_view_pane.visible = true
+        for _, filter in pairs(control.sections[1].filters) do
+            -- item -> item
+            -- fluid -> fluid
+            -- virtual -> virtual_signal
+            -- <absent> -> item
+            local signal_type = (filter.value.type == 'virtual' and 'virtual_signal') or filter.value.type or 'item'
+            local signal_name = filter.value.name
+            local sprite_type = (signal_type == 'virtual_signal' and 'virtual-signal') or signal_type
+
+            local button = {
+                type = 'sprite-button',
+                sprite = sprite_type .. '/' .. signal_name,
+                number = filter.min,
+                style = 'compact_slot',
+                tooltip = prototypes[signal_type][signal_name].localised_name,
+            }
+
+            if signal_type == 'item' then
+                button.elem_tooltip = {
+                    type = 'item-with-quality',
+                    name = signal_name,
+                    quality = filter.value.quality,
+                }
+            elseif signal_type == 'virtual_signal' then
+                button.elem_tooltip = {
+                    type = 'signal',
+                    signal_type = 'virtual', -- see https://forums.factorio.com/viewtopic.php?f=7&t=123237
+                    name = signal_name,
+                }
+            else
+                button.elem_tooltip = {
+                    type = signal_type,
+                    name = signal_name,
+                }
+            end
+
+            signal_view.add(button)
+        end
+    else
+        signal_view_pane.visible = false
+    end
+end
+
+----------------------------------------------------------------------------------------------------
+-- close methods
+----------------------------------------------------------------------------------------------------
 
 ---@param player_index integer?
 function Gui.closeByPlayer(player_index)
@@ -153,8 +271,6 @@ end
 -- UI Callbacks
 ----------------------------------------------------------------------------------------------------
 
-----------------------------------------------------------------------------------------------------
-
 ---@param event EventData.on_gui_switch_state_changed|EventData.on_gui_checked_state_changed|EventData.on_gui_elem_changed
 ---@return InventorySensorData? is_entity
 local function locate_config(event)
@@ -169,6 +285,23 @@ end
 ---@param event EventData.on_gui_click|EventData.on_gui_opened
 function Gui.onWindowClosed(event)
     Gui.closeByPlayer(event.player_index)
+end
+
+local on_off_values = {
+    left = false,
+    right = true,
+}
+
+local values_on_off = table.invert(on_off_values)
+
+--- Enable / Disable switch
+---
+---@param event EventData.on_gui_switch_state_changed
+function Gui.onSwitchEnabled(event)
+    local is_entity = locate_config(event)
+    if not is_entity then return end
+
+    is_entity.config.enabled = on_off_values[event.element.switch_state]
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -187,6 +320,24 @@ local function update_gui_state(gui, is_entity)
 
     local status = gui:find_element('status')
     status.caption = { tools.STATUS_NAMES[entity_status] }
+
+    local inv_status = gui:find_element('inv-status')
+    if is_entity.config.enabled then
+        if is_entity.scan_entity then
+            inv_status.caption = { const:locale('connected'), is_entity.scan_entity.localised_name }
+        else
+            inv_status.caption = { const:locale('scanning') }
+        end
+    else
+        inv_status.caption = { const:locale('disabled') }
+    end
+
+    local enabled = is_entity.config.enabled
+    local on_off = gui:find_element('on-off')
+    on_off.switch_state = values_on_off[enabled]
+
+    local signal_view = gui:find_element('signal-view')
+    Gui.renderPreview(is_entity, gui)
 end
 
 ----------------------------------------------------------------------------------------------------

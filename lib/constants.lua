@@ -121,8 +121,5 @@ Constants.settings_update_inventory_sensors = Constants:with_prefix(Constants.se
 -- localization
 --------------------------------------------------------------------------------
 
-Constants.locale = {
-    entity_name = 'entity-name.' .. Constants.inventory_sensor_name
-}
 --------------------------------------------------------------------------------
 return Constants

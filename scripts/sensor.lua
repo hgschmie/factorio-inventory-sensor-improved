@@ -27,7 +27,7 @@ local function locate_scan_controller(entity)
 
     assert(entity)
     local scan_controller = is_entities.supported_entities[entity.type] and
-    (is_entities.supported_entities[entity.type][entity.name] or is_entities.supported_entities[entity.type]['*'])
+        (is_entities.supported_entities[entity.type][entity.name] or is_entities.supported_entities[entity.type]['*'])
 
     if not scan_controller then return nil end
 
@@ -120,34 +120,34 @@ end
 ---@param force boolean?
 ---@return boolean scanned True if scan happened
 function InventorySensor:scan(force)
-    local interval = self.scan_interval or Framework.settings:runtime_setting(const.settings_find_entity_interval_name)
+    if self.config.enabled then
+        local interval = self.scan_interval or Framework.settings:runtime_setting(const.settings_find_entity_interval_name)
 
-    local scan_time = self.scan_time or 0
-    if not (force or (game.tick - scan_time >= interval)) then return false end
+        local scan_time = self.scan_time or 0
+        if not (force or (game.tick - scan_time >= interval)) then return false end
 
-    self.scan_time = game.tick
+        self.scan_time = game.tick
 
-    if force then
-        self.scan_area = self:create_scan_area()
-    else
-        self.scan_area = self.scan_area or self:create_scan_area()
-    end
+        -- if force is set, always create the scan area, otherwise, if a scan area
+        -- already exists, use that
+        self.scan_area = (not force) and self.scan_area or self:create_scan_area()
 
-    if self.debug then
-        rendering.draw_rectangle {
-            color = { r = 0.5, g = 0.5, b = 1 },
-            surface = self.sensor_entity.surface,
-            left_top = self.scan_area.left_top,
-            right_bottom = self.scan_area.right_bottom,
-            time_to_live = 10,
-        }
-    end
+        if self.debug then
+            rendering.draw_rectangle {
+                color = { r = 0.5, g = 0.5, b = 1 },
+                surface = self.sensor_entity.surface,
+                left_top = self.scan_area.left_top,
+                right_bottom = self.scan_area.right_bottom,
+                time_to_live = 10,
+            }
+        end
 
-    local entities = self.sensor_entity.surface.find_entities(self.scan_area)
+        local entities = self.sensor_entity.surface.find_entities(self.scan_area)
 
-    for _, entity in pairs(entities) do
-        if self:connect(entity) then
-            return true
+        for _, entity in pairs(entities) do
+            if self:connect(entity) then
+                return true
+            end
         end
     end
 
@@ -187,6 +187,8 @@ local function add_signals(self, scan_controller, sink)
     end
 end
 
+----------------------------------------------------------------------------------------------------
+
 ---@param self InventorySensorData
 ---@return LuaConstantCombinatorControlBehavior
 function InventorySensor:clear()
@@ -211,6 +213,7 @@ function InventorySensor:load(force)
 
     local control = self:clear()
 
+    if not self.config.enabled then return false end
     if not Is.Valid(self.scan_entity) then return false end
     local scan_controller = locate_scan_controller(self.scan_entity)
     if not scan_controller then return false end
