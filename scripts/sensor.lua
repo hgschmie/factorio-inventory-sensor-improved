@@ -173,6 +173,8 @@ function InventorySensor:clear()
     return control
 end
 
+
+
 --- Loads the state of the connected entity into the sensor.
 ---@param self InventorySensorData
 ---@param force boolean?
@@ -189,26 +191,34 @@ function InventorySensor:load(force)
     local scan_controller = locate_scan_controller(self.scan_entity)
     if not scan_controller then return false end
 
-    ---@type LuaLogisticSection?
-    local section
     ---@type integer
-    local offset = -1
-    ---@type integer
-    local idx = 1
+    local idx = 0
+
+    ---@type table<string, table<string, table<string, number>>>
+    local cache = {}
 
     local sink = function(filter)
-        local pos
-        repeat
-            pos = idx - offset * 1000
-            if pos > 1000 then section = nil end
-            if not section then
-                section = control.add_section()
-                offset = offset + 1
-            end
+        local signal = filter.value
+        cache[signal.type] = cache[signal.type] or {}
+        cache[signal.type][signal.name] = cache[signal.type][signal.name] or {}
+
+        local index = cache[signal.type][signal.name][signal.quality]
+        if not index then
+            index = idx
+            cache[signal.type][signal.name][signal.quality] = index
+            idx = idx + 1
+            local section = control.sections[math.floor(index / 1000) + 1] or control.add_section()
+
+            local pos = index % 1000 + 1
+            section.set_slot(pos, filter)
+        else
+            local section = control.sections[math.floor(index / 1000) + 1]
             assert(section)
-        until pos <= 1000
-        section.set_slot(idx, filter)
-        idx = idx + 1
+
+            local pos = index % 1000 + 1
+            filter.min = filter.min + section.filters[pos].min
+            section.set_slot(pos,  filter)
+        end
     end
 
     local burner = self.scan_entity.burner
