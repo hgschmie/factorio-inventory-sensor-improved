@@ -27,7 +27,6 @@
 ---@class InventorySensorData: InventorySensor
 ---@field sensor_entity LuaEntity
 ---@field tags Tags?
----@field debug boolean
 ---@field config InventorySensorConfig
 ---@field scan_area BoundingBox?
 ---@field scan_entity LuaEntity?
