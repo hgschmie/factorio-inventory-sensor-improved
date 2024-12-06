@@ -218,18 +218,28 @@ function InventorySensor:load(force)
     if scan_controller.inventories then
         for _, inventory in pairs(scan_controller.inventories) do
             local inventory_items = self.scan_entity.get_inventory(inventory)
-            assert(inventory_items)
-            for _, item in pairs(inventory_items.get_contents()) do
-                sink { value = { name = item.name, type = 'item', quality = item.quality or 'normal' }, min = item.count }
+            if inventory_items then
+                for _, item in pairs(inventory_items.get_contents()) do
+                    sink { value = { name = item.name, type = 'item', quality = item.quality or 'normal' }, min = item.count }
 
-                -- if this is a burner entity, compute remaining fuel, ignore negative entries
-                if burner and inventory == defines.inventory.fuel then
-                    local fuel = prototypes.item[item.name]
-                    if fuel and fuel.fuel_value then
-                        remaining_fuel = remaining_fuel + math.max((fuel.fuel_value / 1e6)  * item.count, 0)
+                    -- if this is a burner entity, compute remaining fuel, ignore negative entries
+                    if burner and inventory == defines.inventory.fuel then
+                        local fuel = prototypes.item[item.name]
+                        if fuel and fuel.fuel_value then
+                            remaining_fuel = remaining_fuel + math.max((fuel.fuel_value / 1e6) * item.count, 0)
+                        end
                     end
                 end
             end
+        end
+    end
+
+    -- get fluids
+
+    for i = 1, self.scan_entity.fluids_count, 1 do
+        local fluid = self.scan_entity.get_fluid(i)
+        if fluid then
+            sink { value = { type = 'fluid', name = fluid.name, quality = 'normal' }, min = math.ceil(fluid.amount) }
         end
     end
 
@@ -244,6 +254,11 @@ function InventorySensor:load(force)
     -- add custom items
     if scan_controller.contribute then
         scan_controller.contribute(self, sink)
+    end
+
+    local temperature = self.scan_entity.temperature
+    if temperature then
+        sink { value = const.signals.temperature_signal, min = temperature }
     end
 
     -- if this is a burner entity, add burner signal
