@@ -8,6 +8,7 @@ local const = require('lib.constants')
 
 local util = require('util')
 local table = require('stdlib.utils.table')
+local Is = require('stdlib.utils.is')
 
 ------------------------------------------------------------------------
 -- Defined entity types
@@ -25,9 +26,28 @@ local car_type = {
     interval = scan_frequency.mobile,
     inventories = {
         defines.inventory.car_trunk,
+        defines.inventory.car_ammo,
+        defines.inventory.fuel,
     },
     validate = function(entity)
         return entity and (entity.speed == 0) -- entity must be standing still
+    end,
+    contribute = function(is_entity, sink)
+        if not Framework.settings:runtime_setting(const.settings_read_equipment_grid_name) then return end
+        if not (Is.Valid(is_entity.scan_entity) and is_entity.scan_entity.grid) then return end
+
+        local grid_equipment = is_entity.scan_entity.grid.equipment
+        local items = {}
+        for _, equipment in pairs(grid_equipment) do
+            local name = equipment.prototype.take_result.name
+            items[name] = items[name] or {}
+            items[name][equipment.quality.name] = (items[name][equipment.quality.name] or 0) + 1
+        end
+        for name, q in pairs(items) do
+            for quality, count in pairs(q) do
+                sink { value = { type = 'item', name = name, quality = quality, }, min = count }
+            end
+        end
     end,
 }
 
@@ -49,10 +69,10 @@ local supported_entities = {
 
 -- patching up
 supported_entities.car.car.signals = {
-    [const.signal_names.car_detected_signal] = 1
+    car_detected_signal = 1
 }
 supported_entities.car.tank.signals = {
-    [const.signal_names.tank_detected_signal] = 1
+    tank_detected_signal = 1
 }
 
 ------------------------------------------------------------------------

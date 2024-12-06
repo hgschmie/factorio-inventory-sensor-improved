@@ -15,6 +15,7 @@
 ---@field interval scan_frequency,
 ---@field inventories defines.inventory[]?
 ---@field validate (fun(entity: LuaEntity): boolean)?
+---@field contribute (fun(is_entity: InventorySensorData, sink: fun(filter: LogisticFilter)))?
 ---@field signals table<string, integer>?
 
 ---@class InventorySensorConfig

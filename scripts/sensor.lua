@@ -162,34 +162,6 @@ end
 ----------------------------------------------------------------------------------------------------
 
 ---@param self InventorySensorData
----@param scan_controller ISDataController
----@param sink fun(filter: LogisticFilter)
-local function load_inventory(self, scan_controller, sink)
-    if not scan_controller.inventories then return end
-
-    for _, inventory in pairs(scan_controller.inventories) do
-        local inventory_items = self.scan_entity.get_inventory(inventory)
-        assert(inventory_items)
-        for _, item in pairs(inventory_items.get_contents()) do
-            sink { value = { name = item.name, type = 'item', quality = item.quality or 'normal' }, min = item.count }
-        end
-    end
-end
-
----@param self InventorySensorData
----@param scan_controller ISDataController
----@param sink fun(filter: LogisticFilter)
-local function add_signals(self, scan_controller, sink)
-    if not scan_controller.signals then return end
-
-    for name, value in pairs(scan_controller.signals) do
-        sink { value = { name = name, type = 'virtual', quality = 'normal' }, min = value }
-    end
-end
-
-----------------------------------------------------------------------------------------------------
-
----@param self InventorySensorData
 ---@return LuaConstantCombinatorControlBehavior
 function InventorySensor:clear()
     -- empty the signals sections
@@ -225,7 +197,7 @@ function InventorySensor:load(force)
     ---@type integer
     local idx = 1
 
-    local populate_callback = function(filter)
+    local sink = function(filter)
         local pos
         repeat
             pos = idx - offset * 1000
@@ -240,11 +212,49 @@ function InventorySensor:load(force)
         idx = idx + 1
     end
 
-    -- load inventory for the entity
-    load_inventory(self, scan_controller, populate_callback)
+    local burner = self.scan_entity.burner
+    local remaining_fuel = 0
 
-    -- add entity specific signals
-    add_signals(self, scan_controller, populate_callback)
+    -- load inventories for the entity
+    if scan_controller.inventories then
+        for _, inventory in pairs(scan_controller.inventories) do
+            local inventory_items = self.scan_entity.get_inventory(inventory)
+            assert(inventory_items)
+            for _, item in pairs(inventory_items.get_contents()) do
+                sink { value = { name = item.name, type = 'item', quality = item.quality or 'normal' }, min = item.count }
+
+                -- if this is a burner entity, compute remaining fuel, ignore negative entries
+                if burner and inventory == defines.inventory.fuel then
+                    local fuel = prototypes.item[item.name]
+                    if fuel and fuel.fuel_value then
+                        remaining_fuel = remaining_fuel + math.max((fuel.fuel_value / 1e6)  * item.count, 0)
+                    end
+                end
+            end
+        end
+    end
+
+    -- add specific static signals
+    if scan_controller.signals then
+        for name, value in pairs(scan_controller.signals) do
+            assert(const.signals[name])
+            sink { value = const.signals[name], min = value }
+        end
+    end
+
+    -- add custom items
+    if scan_controller.contribute then
+        scan_controller.contribute(self, sink)
+    end
+
+    -- if this is a burner entity, add burner signal
+    if burner then
+        if burner.remaining_burning_fuel > 0 then
+            remaining_fuel = remaining_fuel + burner.remaining_burning_fuel / 1e6 -- convert to MJ
+        end
+
+        sink { value = const.signals.fuel_signal, min = math.min(math.floor(remaining_fuel + 0.5), 2 ^ 31 - 1) }
+    end
 
     if self.debug then
         rendering.draw_rectangle {
