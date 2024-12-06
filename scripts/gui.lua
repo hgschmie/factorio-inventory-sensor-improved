@@ -58,101 +58,139 @@ function Gui.getUi(is_entity)
             }, -- Title Bar End
             {  -- Body
                 type = 'frame',
-                style = 'entity_frame',
+                style = 'inside_shallow_frame_packed',
+                direction = 'vertical',
                 children = {
                     {
-                        type = 'flow',
-                        style = 'two_module_spacing_vertical_flow',
-                        direction = 'vertical',
+                        type = 'frame',
+                        direction = 'horizontal',
                         children = {
                             {
-                                type = 'flow',
-                                style = 'framework_indicator_flow',
-                                children = {
-                                    {
-                                        type = 'sprite',
-                                        name = 'lamp',
-                                        style = 'framework_indicator',
-                                    },
-                                    {
-                                        type = 'label',
-                                        style = 'label',
-                                        name = 'status',
-                                    },
-                                    {
-                                        type = 'empty-widget',
-                                        style_mods = { horizontally_stretchable = true },
-                                    },
-                                    {
-                                        type = 'label',
-                                        style = 'label',
-                                        caption = 'ID: ' .. is_entity.sensor_entity.unit_number,
-                                    },
-                                },
-                            },
-                            {
-                                type = 'frame',
-                                style = 'deep_frame_in_shallow_frame',
-                                name = 'preview_frame',
-                                children = {
-                                    {
-                                        type = 'entity-preview',
-                                        name = 'preview',
-                                        style = 'wide_entity_button',
-                                        elem_mods = { entity = is_entity.sensor_entity },
-                                        style_mods = { width = 400, },
-                                    },
-                                },
+                                type = 'label',
+                                style = 'subheader_label',
+                                name = 'connections',
                             },
                             {
                                 type = 'label',
-                                style = 'semibold_label',
-                                caption = { 'gui-constant.output' },
+                                style = 'label',
+                                name = 'connection-red',
+                                visible = false,
                             },
                             {
-                                type = 'switch',
-                                name = 'on-off',
-                                right_label_caption = { 'gui-constant.on' },
-                                left_label_caption = { 'gui-constant.off' },
-                                handler = { [defines.events.on_gui_switch_state_changed] = Gui.onSwitchEnabled },
+                                type = 'label',
+                                style = 'label',
+                                name = 'connection-green',
+                                visible = false,
                             },
+                            {
+                                type = 'empty-widget',
+                                style_mods = { horizontally_stretchable = true },
+                            },
+                        },
+                    },
+                    {
+                        type = 'frame',
+                        style = 'entity_frame',
+                        style_mods = { width = 400, },
+                        children = {
                             {
                                 type = 'flow',
-                                style = 'framework_indicator_flow',
+                                style = 'two_module_spacing_vertical_flow',
+                                direction = 'vertical',
                                 children = {
+                                    {
+                                        type = 'flow',
+                                        style = 'framework_indicator_flow',
+                                        children = {
+                                            {
+                                                type = 'sprite',
+                                                name = 'lamp',
+                                                style = 'framework_indicator',
+                                            },
+                                            {
+                                                type = 'label',
+                                                style = 'label',
+                                                name = 'status',
+                                            },
+                                            {
+                                                type = 'empty-widget',
+                                                style_mods = { horizontally_stretchable = true },
+                                            },
+                                            {
+                                                type = 'label',
+                                                style = 'label',
+                                                caption = 'ID: ' .. is_entity.sensor_entity.unit_number,
+                                            },
+                                        },
+                                    },
+                                    {
+                                        type = 'frame',
+                                        style = 'deep_frame_in_shallow_frame',
+                                        name = 'preview_frame',
+                                        children = {
+                                            {
+                                                type = 'entity-preview',
+                                                name = 'preview',
+                                                style = 'wide_entity_button',
+                                                elem_mods = { entity = is_entity.sensor_entity },
+                                            },
+                                        },
+                                    },
                                     {
                                         type = 'label',
                                         style = 'semibold_label',
-                                        caption = { const:locale('inv-status-label') },
+                                        caption = { 'gui-constant.output' },
                                     },
                                     {
-                                        type = 'label',
-                                        style = 'label',
-                                        name = 'inv-status',
+                                        type = 'switch',
+                                        name = 'on-off',
+                                        right_label_caption = { 'gui-constant.on' },
+                                        left_label_caption = { 'gui-constant.off' },
+                                        handler = { [defines.events.on_gui_switch_state_changed] = Gui.onSwitchEnabled },
                                     },
                                     {
-                                        type = 'empty-widget',
-                                        style_mods = { horizontally_stretchable = true },
+                                        type = 'flow',
+                                        style = 'framework_indicator_flow',
+                                        children = {
+                                            {
+                                                type = 'label',
+                                                style = 'semibold_label',
+                                                caption = { const:locale('inv-status-label') },
+                                            },
+                                            {
+                                                type = 'label',
+                                                style = 'label',
+                                                name = 'inv-status',
+                                            },
+                                            {
+                                                type = 'empty-widget',
+                                                style_mods = { horizontally_stretchable = true },
+                                            },
+                                        },
                                     },
                                 },
                             },
+                        },
+                    },
+                    {
+                        type = 'scroll-pane',
+                        style = 'logistic_sections_scroll_pane',
+                        direction = 'vertical',
+                        name = 'signal-view-pane',
+                        visible = false,
+                        vertical_scroll_policy = 'auto-and-reserve-space',
+                        horizontal_scroll_policy = 'never',
+                        style_mods = {
+                            horizontally_stretchable = true,
+                        },
+                        children = {
                             {
-                                type = 'scroll-pane',
-                                style = 'logistic_sections_scroll_pane',
-                                direction = 'vertical',
-                                name = 'signal-view-pane',
-                                visible = false,
-                                vertical_scroll_policy = 'auto-and-reserve-space',
-                                horizontal_scroll_policy = 'never',
+                                type = 'table',
+                                style = 'filter_slot_table',
+                                name = 'signal-view',
+                                column_count = 10,
                                 style_mods = {
-                                    horizontally_stretchable = true,
-                                },
-                                children = {
-                                    {
-                                        type = 'table',
-                                        name = 'signal-view',
-                                        column_count = 10,
-                                    },
+                                    vertical_spacing = 4,
                                 },
                             },
                         },
@@ -196,7 +234,7 @@ function Gui.renderPreview(is_entity, gui)
                 type = 'sprite-button',
                 sprite = sprite_type .. '/' .. signal_name,
                 number = filter.min,
-                style = 'compact_slot',
+                style = 'compact_slot', -- 'slot_button',
                 tooltip = prototypes[signal_type][signal_name].localised_name,
             }
 
@@ -239,18 +277,11 @@ function Gui.closeByPlayer(player_index)
 
     local gui = player_data.is_gui
 
-    if (gui) then
-        if player.opened == player_data.is_gui.gui.root then
-            player.opened = nil
-        end
+    if (not gui) then return end
 
-        Event.remove(-1, Gui.guiUpdater, nil, gui)
-        player_data.is_gui = nil
-
-        if gui.gui then
-            Framework.gui_manager:destroy_gui(gui.gui)
-        end
-    end
+    Event.remove(-1, Gui.guiUpdater, nil, gui)
+    player_data.is_gui = nil
+    Framework.gui_manager:destroy_gui(gui.gui)
 end
 
 ---@param unit_number integer?
@@ -310,7 +341,7 @@ end
 
 ---@param gui FrameworkGui
 ---@param is_entity InventorySensorData
-local function update_gui_state(gui, is_entity)
+local function update_config_gui_state(gui, is_entity)
     local entity_status = (not is_entity.config.enabled) and defines.entity_status.disabled -- if not enabled, status is disabled
         or is_entity.config.status                                                          -- if enabled, the registered state takes precedence if present
         or defines.entity_status.working                                                    -- otherwise, it is working
@@ -324,7 +355,7 @@ local function update_gui_state(gui, is_entity)
     local inv_status = gui:find_element('inv-status')
     if is_entity.config.enabled then
         if is_entity.scan_entity then
-            inv_status.caption = { const:locale('connected'), is_entity.scan_entity.localised_name }
+            inv_status.caption = { const:locale('reading'), is_entity.scan_entity.localised_name }
         else
             inv_status.caption = { const:locale('scanning') }
         end
@@ -335,9 +366,28 @@ local function update_gui_state(gui, is_entity)
     local enabled = is_entity.config.enabled
     local on_off = gui:find_element('on-off')
     on_off.switch_state = values_on_off[enabled]
+end
 
-    local signal_view = gui:find_element('signal-view')
+---@param gui FrameworkGui
+---@param is_entity InventorySensorData
+local function update_gui_state(gui, is_entity)
     Gui.renderPreview(is_entity, gui)
+
+    local connections = gui:find_element('connections')
+    connections.caption = { 'gui-control-behavior.not-connected' }
+    for _, color in pairs { 'red', 'green' } do
+        local wire_connector = is_entity.sensor_entity.get_wire_connector(defines.wire_connector_id['circuit_' .. color], false)
+
+        local wire_connection = gui:find_element('connection-' .. color)
+        if wire_connector and wire_connector.connection_count > 0 then
+            connections.caption = { 'gui-control-behavior.connected-to-network' }
+            wire_connection.visible = true
+            wire_connection.caption = { 'gui-control-behavior.' .. color .. '-network-id', wire_connector.network_id }
+        else
+            wire_connection.visible = false
+            wire_connection.caption = nil
+        end
+    end
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -353,9 +403,12 @@ function Gui.guiUpdater(ev, is_gui)
     end
 
     if not (is_gui.last_config and table.compare(is_gui.last_config, is_entity.config)) then
-        update_gui_state(is_gui.gui, is_entity)
+        update_config_gui_state(is_gui.gui, is_entity)
         is_gui.last_config = tools.copy(is_entity.config)
     end
+
+    -- always update wire state and preview
+    update_gui_state(is_gui.gui, is_entity)
 end
 
 ----------------------------------------------------------------------------------------------------
