@@ -91,6 +91,7 @@ Constants.signal_names = {
     progress_signal = 'inv-sensor-progress',
     temperature_signal = 'inv-sensor-temperature',
     fuel_signal = 'inv-sensor-fuel',
+    charge_signal = 'inv-sensor-charge',
     car_detected_signal = 'inv-sensor-detected-car',
     tank_detected_signal = 'inv-sensor-detected-tank',
     spider_detected_signal = 'inv-sensor-detected-spider',

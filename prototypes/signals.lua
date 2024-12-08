@@ -12,7 +12,10 @@ local signals = {
     {
         type = 'virtual-signal',
         name = const.signal_names.progress_signal,
-        icon = const:png('icon/progress'),
+        icons = {
+            { icon = base_icon_png('signal/signal_green'), icon_size = 64, icon_mipmaps = 4 },
+            { icon = const:png('icon/progress'),           icon_size = 64, icon_mipmaps = 4 },
+        },
         icon_size = 32,
         subgroup = 'sensor-signals',
         order = 'is-ba',
@@ -20,7 +23,10 @@ local signals = {
     {
         type = 'virtual-signal',
         name = const.signal_names.temperature_signal,
-        icon = const:png('icon/temperature'),
+        icons = {
+            { icon = base_icon_png('signal/signal_green'), icon_size = 64, icon_mipmaps = 4 },
+            { icon = const:png('icon/temperature'),        icon_size = 64, icon_mipmaps = 4 },
+        },
         icon_size = 32,
         subgroup = 'sensor-signals',
         order = 'is-bb',
@@ -28,10 +34,24 @@ local signals = {
     {
         type = 'virtual-signal',
         name = const.signal_names.fuel_signal,
-        icon = const:png('icon/fuel'),
+        icons = {
+            { icon = base_icon_png('signal/signal_green'), icon_size = 64, icon_mipmaps = 4 },
+            { icon = const:png('icon/fuel'),               icon_size = 64, icon_mipmaps = 4 },
+        },
         icon_size = 32,
         subgroup = 'sensor-signals',
         order = 'is-bc',
+    },
+    {
+        type = 'virtual-signal',
+        name = const.signal_names.charge_signal,
+        icons = {
+            { icon = base_icon_png('signal/signal_green'), icon_size = 64, icon_mipmaps = 4 },
+            { icon = const:png('icon/charge'),             icon_size = 64, icon_mipmaps = 4 },
+        },
+        icon_size = 32,
+        subgroup = 'sensor-signals',
+        order = 'is-bd',
     },
     {
         type = 'virtual-signal',
