@@ -50,6 +50,5 @@ is_entity.sprites = make_4way_animation_from_spritesheet {
 -- EntityPrototype
 is_entity.icon = const:png('icon/inventory-sensor')
 is_entity.minable = { mining_time = 0.1, result = const.inventory_sensor_name }
-is_entity.fast_replaceable_group = 'inventory-sensor'
 
 data:extend { is_item, is_entity }
