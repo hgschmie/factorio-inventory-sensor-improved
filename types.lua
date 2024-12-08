@@ -13,7 +13,7 @@
 
 ---@class ISDataController
 ---@field interval scan_frequency,
----@field inventories table<defines.inventory, any>
+---@field inventories defines.inventory[]
 ---@field validate (fun(entity: InventorySensorData): boolean)?
 ---@field contribute (fun(is_entity: InventorySensorData, sink: fun(filter: LogisticFilter)))?
 ---@field signals table<string, integer>?
@@ -22,6 +22,7 @@
 ---@field enabled boolean
 ---@field status defines.entity_status
 ---@field scan_entity_id integer?
+---@field inventories table<defines.inventory, true>
 
 
 ---@class InventorySensorData: InventorySensor

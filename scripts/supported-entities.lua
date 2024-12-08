@@ -88,20 +88,24 @@ end
 -- Defined entity types
 ------------------------------------------------------------------------
 
+-- simplest, stationary entity
+local stationary_type = {
+    interval = scan_frequency.stationary,
+}
+
 -- generic container with single inventory
 local container_type = {
     interval = scan_frequency.stationary,
-    inventories = table.array_to_dictionary {
+    inventories = {
         defines.inventory.chest,
     },
 }
 
 local car_type = {
     interval = scan_frequency.mobile,
-    inventories = table.array_to_dictionary {
+    inventories = {
         defines.inventory.car_trunk,
         defines.inventory.car_ammo,
-        defines.inventory.fuel,
     },
     validate = is_stopped,
     contribute = read_grid,
@@ -109,44 +113,42 @@ local car_type = {
 
 local train_type = {
     interval = scan_frequency.mobile,
-    inventories = table.array_to_dictionary {
+    inventories = {
         defines.inventory.cargo_wagon,
         defines.inventory.artillery_wagon_ammo,
-        defines.inventory.fuel,
     },
     validate = is_train_stopped,
 }
 
 local assembler_type = {
     interval = scan_frequency.stationary,
-    inventories =  table.array_to_dictionary {
+    inventories =  {
         defines.inventory.assembling_machine_input,
         defines.inventory.assembling_machine_output,
         defines.inventory.furnace_source,
         defines.inventory.furnace_result,
-        defines.inventory.fuel,
     },
     contribute = read_crafting_progress,
 }
 
 local lab_type = {
     interval = scan_frequency.stationary,
-    inventories = table.array_to_dictionary {
+    inventories = {
         defines.inventory.lab_input,
     },
     contribute = read_research_progress,
 }
 
-local reactor_type = {
+local reactory_type = {
     interval = scan_frequency.stationary,
-    inventories = table.array_to_dictionary {
-        defines.inventory.fuel,
+    inventories = {
+        defines.inventory.burnt_result,
     },
 }
 
 local roboport_type = {
     interval = scan_frequency.stationary,
-    inventories = table.array_to_dictionary {
+    inventories = {
         defines.inventory.roboport_robot,
         defines.inventory.roboport_material,
     },
@@ -154,7 +156,7 @@ local roboport_type = {
 
 local rocketsilo_type = {
     interval = scan_frequency.stationary,
-    inventories = table.array_to_dictionary {
+    inventories = {
         defines.inventory.rocket_silo_input,
         defines.inventory.rocket_silo_output,
         defines.inventory.rocket_silo_rocket,
@@ -163,7 +165,7 @@ local rocketsilo_type = {
 
 local turret_type = {
     interval = scan_frequency.stationary,
-    inventories = table.array_to_dictionary {
+    inventories = {
         defines.inventory.turret_ammo,
     },
 }
@@ -195,9 +197,9 @@ local supported_entities = {
 
     lab = util.copy(lab_type),
 
-    reactor = util.copy(reactor_type),
-    generator = util.copy(reactor_type),
-    boiler = util.copy(reactor_type),
+    reactor = util.copy(reactory_type),
+    generator = util.copy(stationary_type),
+    boiler = util.copy(stationary_type),
 
     roboport = util.copy(roboport_type),
 

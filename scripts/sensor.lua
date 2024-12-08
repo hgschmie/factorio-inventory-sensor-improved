@@ -7,6 +7,7 @@ local const = require('lib.constants')
 
 local Is = require('stdlib.utils.is')
 local Area = require('stdlib.area.area')
+local table = require('stdlib.utils.table')
 
 ---@type ISSupportedEntities
 local is_entities = require('scripts.supported-entities')
@@ -54,19 +55,19 @@ end
 ---@param tags Tags?
 ---@return InventorySensorData
 function InventorySensor.new(sensor_entity, tags)
-    ---@type InventorySensorData
     local data = {
         sensor_entity = sensor_entity,
         tags = tags,
         config = {
             enabled = true,
             status = sensor_entity.status,
+            inventories = {},
         },
     }
 
     InventorySensor.enhance(data)
 
-    return data
+    return data --[[@as InventorySensorData ]]
 end
 
 --- Add the meta methods to the data object. *MUST* be called every time the
@@ -216,7 +217,7 @@ function InventorySensor:load(force)
 
             local pos = index % 1000 + 1
             filter.min = filter.min + section.filters[pos].min
-            section.set_slot(pos,  filter)
+            section.set_slot(pos, filter)
         end
     end
 
@@ -224,15 +225,14 @@ function InventorySensor:load(force)
     local remaining_fuel = 0
 
     -- load inventories for the entity
-    if scan_controller.inventories then
-        for inventory in pairs(scan_controller.inventories) do
+    if table_size(self.config.inventories) > 0 then
+        for inventory in pairs(self.config.inventories) do
             local inventory_items = self.scan_entity.get_inventory(inventory)
             if inventory_items then
                 for _, item in pairs(inventory_items.get_contents()) do
                     sink { value = { name = item.name, type = 'item', quality = item.quality or 'normal' }, min = item.count }
 
-                    -- if this is a burner entity, compute remaining fuel, ignore negative entries
-                    if burner and inventory == defines.inventory.fuel then
+                    if burner and (inventory == defines.inventory.fuel) then
                         local fuel = prototypes.item[item.name]
                         if fuel and fuel.fuel_value then
                             remaining_fuel = remaining_fuel + math.max((fuel.fuel_value / 1e6) * item.count, 0)
@@ -244,7 +244,6 @@ function InventorySensor:load(force)
     end
 
     -- get fluids
-
     for i = 1, self.scan_entity.fluids_count, 1 do
         local fluid = self.scan_entity.get_fluid(i)
         if fluid then
@@ -273,9 +272,8 @@ function InventorySensor:load(force)
     -- if this is a burner entity, add burner signal
     if burner then
         if burner.remaining_burning_fuel > 0 then
-            remaining_fuel = remaining_fuel + burner.remaining_burning_fuel / 1e6 -- convert to MJ
+            remaining_fuel = remaining_fuel + burner.remaining_burning_fuel / 1e6 -- Joule -> MJ
         end
-
         sink { value = const.signals.fuel_signal, min = math.min(math.floor(remaining_fuel + 0.5), 2 ^ 31 - 1) }
     end
 
@@ -306,15 +304,22 @@ function InventorySensor:connect(entity)
     local scan_controller = locate_scan_controller(entity)
     if not scan_controller then return false end
 
-    local connect_event = self.scan_entity == nil or self.scan_entity.unit_number ~= entity.unit_number
+    -- reconnect to the same entity
+    if self.scan_entity and self.scan_entity.unit_number == entity.unit_number then return true end
 
     self.scan_entity = entity
     self.scan_interval = scan_controller.interval or scan_frequency.stationary -- unset scan interval -> stationary
     self.config.scan_entity_id = entity.unit_number
+    self.config.inventories = table.array_to_dictionary(scan_controller.inventories or {}, true)
+
+    -- burners also look at fuel
+    if entity.burner then
+        self.config.inventories[defines.inventory.fuel] = true
+    end
 
     self:load(true)
 
-    if connect_event and Framework.settings:runtime_setting('debug_mode') then
+    if Framework.settings:runtime_setting('debug_mode') then
         rendering.draw_rectangle {
             color = { r = 0.3, g = 1, b = 0.3 },
             surface = self.sensor_entity.surface,
@@ -333,7 +338,12 @@ function InventorySensor:disconnect()
 
     self.scan_entity = nil
     self.scan_interval = nil
+    self.scan_time = nil
+    self.load_time = nil
+
     self.config.scan_entity_id = nil
+    self.config.status = nil
+    self.config.inventories = {}
 
     self:clear()
 

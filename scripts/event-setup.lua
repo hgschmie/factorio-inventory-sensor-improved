@@ -97,14 +97,7 @@ local function onConfigurationChanged(changed)
     end
 
     for _, entity in pairs(This.SensorController:entities()) do
-        if not entity.config then
-            entity.config = {
-                enabled = true,
-                status = entity.sensor_entity.status,
-                scan_entity_id = entity.scan_entity and entity.scan_entity.unit_number,
-            }
-        end
-        entity.sensor_entity.operable = true
+        entity:disconnect()
     end
 end
 
