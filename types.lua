@@ -23,6 +23,7 @@
 ---@field status defines.entity_status
 ---@field scan_entity_id integer?
 ---@field inventories table<defines.inventory, true>
+---@field read_grid boolean
 
 
 ---@class InventorySensorData: InventorySensor

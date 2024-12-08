@@ -60,6 +60,7 @@ function InventorySensor.new(sensor_entity, tags)
         tags = tags,
         config = {
             enabled = true,
+            read_grid = false,
             status = sensor_entity.status,
             inventories = {},
         },

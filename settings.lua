@@ -22,13 +22,6 @@ data:extend({
         maximum_value = 216000, -- 1h
     },
     {
-        type = "bool-setting",
-        name = const.settings_read_equipment_grid,
-        order = "ba",
-        setting_type = "runtime-global",
-        default_value = false,
-    },
-    {
         type = "double-setting",
         name = const.settings_scan_offset,
         order = "ca",

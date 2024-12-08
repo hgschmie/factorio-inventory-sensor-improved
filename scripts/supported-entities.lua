@@ -37,7 +37,7 @@ end
 ---@param is_entity InventorySensorData
 ---@param sink fun(filter: LogisticFilter)
 local function read_grid(is_entity, sink)
-    if not Framework.settings:runtime_setting(const.settings_read_equipment_grid_name) then return end
+    if not is_entity.config.read_grid then return end
     if not (Is.Valid(is_entity.scan_entity) and is_entity.scan_entity.grid) then return end
 
     local grid_equipment = is_entity.scan_entity.grid.equipment
@@ -192,6 +192,8 @@ local supported_entities = {
         tank = util.copy(car_type),
     },
 
+    ['spider-vehicle'] = util.copy(car_type),
+
     ['assembling-machine'] = util.copy(assembler_type),
     furnace = util.copy(assembler_type),
 
@@ -221,8 +223,13 @@ local supported_entities = {
 supported_entities.car.car.signals = {
     car_detected_signal = 1
 }
+
 supported_entities.car.tank.signals = {
     tank_detected_signal = 1
+}
+
+supported_entities['spider-vehicle'].signals = {
+    spider_detected_signal = 1
 }
 
 supported_entities.locomotive.signals = {

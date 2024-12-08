@@ -168,6 +168,13 @@ function Gui.getUi(is_entity)
                                             },
                                         },
                                     },
+                                    {
+                                        type = 'checkbox',
+                                        caption = { const:locale('read-grid') },
+                                        name = 'read-grid',
+                                        handler = { [defines.events.on_gui_checked_state_changed] = Gui.onToggleGridRead },
+                                        state = false,
+                                    },
                                 },
                             },
                         },
@@ -335,6 +342,13 @@ function Gui.onSwitchEnabled(event)
     is_entity.config.enabled = on_off_values[event.element.switch_state]
 end
 
+function Gui.onToggleGridRead(event)
+    local is_entity = locate_config(event)
+    if not is_entity then return end
+
+    is_entity.config.read_grid = event.element.state
+end
+
 ----------------------------------------------------------------------------------------------------
 -- GUI state updater
 ----------------------------------------------------------------------------------------------------
@@ -351,6 +365,9 @@ local function update_config_gui_state(gui, is_entity)
 
     local status = gui:find_element('status')
     status.caption = { tools.STATUS_NAMES[entity_status] }
+
+    local read_grid = gui:find_element('read-grid')
+    read_grid.state = is_entity.config.read_grid or false
 
     local inv_status = gui:find_element('inv-status')
     if is_entity.config.enabled then
