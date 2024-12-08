@@ -11,86 +11,142 @@ local table = require('stdlib.utils.table')
 local Is = require('stdlib.utils.is')
 
 ------------------------------------------------------------------------
+-- helper functions
+------------------------------------------------------------------------
+
+---@param entity LuaEntity This must be an entity because we may test during sensor creation
+---@return boolean
+local function is_stopped(entity)
+    if not Is.Valid(entity) then return false end
+    return entity.speed == 0 -- entity must be standing still
+end
+
+local valid_train_states = table.array_to_dictionary({
+    defines.train_state.wait_signal,
+    defines.train_state.wait_station,
+    defines.train_state.manual_control,
+}, true)
+
+---@param entity LuaEntity This must be an entity because we may test during sensor creation
+---@return boolean
+local function is_train_stopped(entity)
+    if not (Is.Valid(entity) and entity.train) then return false end
+    return valid_train_states[entity.train.state] and true or false
+end
+
+---@param is_entity InventorySensorData
+---@param sink fun(filter: LogisticFilter)
+local function read_grid(is_entity, sink)
+    if not Framework.settings:runtime_setting(const.settings_read_equipment_grid_name) then return end
+    if not (Is.Valid(is_entity.scan_entity) and is_entity.scan_entity.grid) then return end
+
+    local grid_equipment = is_entity.scan_entity.grid.equipment
+    local items = {}
+    for _, equipment in pairs(grid_equipment) do
+        local name = equipment.prototype.take_result.name
+        items[name] = items[name] or {}
+        items[name][equipment.quality.name] = (items[name][equipment.quality.name] or 0) + 1
+    end
+    for name, q in pairs(items) do
+        for quality, count in pairs(q) do
+            sink { value = { type = 'item', name = name, quality = quality, }, min = count }
+        end
+    end
+end
+
+---@param is_entity InventorySensorData
+---@param sink fun(filter: LogisticFilter)
+local function read_crafting_progress(is_entity, sink)
+    if not Is.Valid(is_entity.scan_entity) then return end
+    local progress = is_entity.scan_entity.crafting_progress
+    if progress then
+        sink { value = const.signals.progress_signal, min = math.floor(progress * 100) }
+    end
+end
+
+---@param is_entity InventorySensorData
+---@param sink fun(filter: LogisticFilter)
+local function read_research_progress(is_entity, sink)
+    if not Is.Valid(is_entity.scan_entity) then return end
+    local progress = is_entity.scan_entity.force.research_progress
+    if progress then
+        sink { value = const.signals.progress_signal, min = math.floor(progress * 100) }
+    end
+end
+
+---@param is_entity InventorySensorData
+---@param sink fun(filter: LogisticFilter)
+local function read_charge(is_entity, sink)
+    local entity = is_entity.scan_entity
+    if not Is.Valid(entity) then return end
+    assert(entity)
+    sink { value = const.signals.charge_signal, min = math.floor(entity.energy / entity.electric_buffer_size * 100) }
+end
+
+
+------------------------------------------------------------------------
 -- Defined entity types
 ------------------------------------------------------------------------
 
 -- generic container with single inventory
 local container_type = {
     interval = scan_frequency.stationary,
-    inventories = {
+    inventories = table.array_to_dictionary {
         defines.inventory.chest,
     },
 }
 
 local car_type = {
     interval = scan_frequency.mobile,
-    inventories = {
+    inventories = table.array_to_dictionary {
         defines.inventory.car_trunk,
         defines.inventory.car_ammo,
         defines.inventory.fuel,
     },
-    validate = function(entity)
-        return entity and (entity.speed == 0) -- entity must be standing still
-    end,
-    contribute = function(is_entity, sink)
-        if not Framework.settings:runtime_setting(const.settings_read_equipment_grid_name) then return end
-        if not (Is.Valid(is_entity.scan_entity) and is_entity.scan_entity.grid) then return end
+    validate = is_stopped,
+    contribute = read_grid,
+}
 
-        local grid_equipment = is_entity.scan_entity.grid.equipment
-        local items = {}
-        for _, equipment in pairs(grid_equipment) do
-            local name = equipment.prototype.take_result.name
-            items[name] = items[name] or {}
-            items[name][equipment.quality.name] = (items[name][equipment.quality.name] or 0) + 1
-        end
-        for name, q in pairs(items) do
-            for quality, count in pairs(q) do
-                sink { value = { type = 'item', name = name, quality = quality, }, min = count }
-            end
-        end
-    end,
+local train_type = {
+    interval = scan_frequency.mobile,
+    inventories = table.array_to_dictionary {
+        defines.inventory.cargo_wagon,
+        defines.inventory.artillery_wagon_ammo,
+        defines.inventory.fuel,
+    },
+    validate = is_train_stopped,
 }
 
 local assembler_type = {
     interval = scan_frequency.stationary,
-    inventories = {
-        defines.inventory.assembling_machine_input,  -- same as defines.inventory.furnace_source,
-        defines.inventory.assembling_machine_output, -- same as defines.inventory.furnace_result,
+    inventories =  table.array_to_dictionary {
+        defines.inventory.assembling_machine_input,
+        defines.inventory.assembling_machine_output,
+        defines.inventory.furnace_source,
+        defines.inventory.furnace_result,
         defines.inventory.fuel,
     },
-    contribute = function(is_entity, sink)
-        if not Is.Valid(is_entity.scan_entity) then return end
-        local progress = is_entity.scan_entity.crafting_progress
-        if progress then
-            sink { value = const.signals.progress_signal, min = math.floor(progress * 100) }
-        end
-    end
+    contribute = read_crafting_progress,
 }
 
 local lab_type = {
     interval = scan_frequency.stationary,
-    inventories = {
+    inventories = table.array_to_dictionary {
         defines.inventory.lab_input,
     },
-    contribute = function(is_entity, sink)
-        if not Is.Valid(is_entity.scan_entity) then return end
-        local progress = is_entity.scan_entity.force.research_progress
-        if progress then
-            sink { value = const.signals.progress_signal, min = math.floor(progress * 100) }
-        end
-    end
+    contribute = read_research_progress,
 }
 
 local reactor_type = {
     interval = scan_frequency.stationary,
-    inventories = {
+    inventories = table.array_to_dictionary {
         defines.inventory.fuel,
     },
 }
 
 local roboport_type = {
     interval = scan_frequency.stationary,
-    inventories = {
+    inventories = table.array_to_dictionary {
         defines.inventory.roboport_robot,
         defines.inventory.roboport_material,
     },
@@ -98,11 +154,23 @@ local roboport_type = {
 
 local rocketsilo_type = {
     interval = scan_frequency.stationary,
-    inventories = {
+    inventories = table.array_to_dictionary {
         defines.inventory.rocket_silo_input,
         defines.inventory.rocket_silo_output,
         defines.inventory.rocket_silo_rocket,
     },
+}
+
+local turret_type = {
+    interval = scan_frequency.stationary,
+    inventories = table.array_to_dictionary {
+        defines.inventory.turret_ammo,
+    },
+}
+
+local accumulator_type = {
+    interval = scan_frequency.stationary,
+    contribute = read_charge,
 }
 
 ------------------------------------------------------------------------
@@ -135,7 +203,16 @@ local supported_entities = {
 
     ['rocket-silo'] = util.copy(rocketsilo_type),
 
-    
+    locomotive = util.copy(train_type),
+    ['cargo-wagon'] = util.copy(train_type),
+    ['fluid-wagon'] = util.copy(train_type),
+    ['artillery-wagon'] = util.copy(train_type),
+
+    ['artillery-turret'] = util.copy(turret_type),
+
+    ['cargo-landing-pad'] = util.copy(container_type),
+
+    ['accumulator'] = util.copy(accumulator_type),
 }
 
 -- patching up
@@ -144,6 +221,22 @@ supported_entities.car.car.signals = {
 }
 supported_entities.car.tank.signals = {
     tank_detected_signal = 1
+}
+
+supported_entities.locomotive.signals = {
+    locomotive_detected_signal = 1
+}
+
+supported_entities['cargo-wagon'].signals = {
+    wagon_detected_signal = 1
+}
+
+supported_entities['fluid-wagon'].signals = {
+    wagon_detected_signal = 1
+}
+
+supported_entities['artillery-wagon'].signals = {
+    wagon_detected_signal = 1
 }
 
 ------------------------------------------------------------------------

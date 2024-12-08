@@ -173,8 +173,6 @@ function InventorySensor:clear()
     return control
 end
 
-
-
 --- Loads the state of the connected entity into the sensor.
 ---@param self InventorySensorData
 ---@param force boolean?
@@ -197,8 +195,9 @@ function InventorySensor:load(force)
     ---@type table<string, table<string, table<string, number>>>
     local cache = {}
 
+    ---@type fun(filter: LogisticFilter)
     local sink = function(filter)
-        local signal = filter.value
+        local signal = filter.value --[[@as SignalFilter]]
         cache[signal.type] = cache[signal.type] or {}
         cache[signal.type][signal.name] = cache[signal.type][signal.name] or {}
 
@@ -226,7 +225,7 @@ function InventorySensor:load(force)
 
     -- load inventories for the entity
     if scan_controller.inventories then
-        for _, inventory in pairs(scan_controller.inventories) do
+        for inventory in pairs(scan_controller.inventories) do
             local inventory_items = self.scan_entity.get_inventory(inventory)
             if inventory_items then
                 for _, item in pairs(inventory_items.get_contents()) do
