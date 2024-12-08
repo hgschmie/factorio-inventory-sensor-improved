@@ -3,6 +3,8 @@
 -- Inventory Sensor main code
 ------------------------------------------------------------------------
 
+local Is = require('stdlib.utils.is')
+
 local const = require('lib.constants')
 
 local Sensor = require('scripts.sensor')
@@ -115,6 +117,23 @@ function InventorySensorController:move(unit_number)
     if not is_data then return end
 
     is_data:scan(true)
+end
+
+--------------------------------------------------------------------------------
+-- Blueprint
+--------------------------------------------------------------------------------
+
+---@param entity LuaEntity
+---@param idx integer
+---@param blueprint LuaItemStack
+---@param context table<string, any>
+function InventorySensorController.blueprint_callback(entity, idx, blueprint, context)
+    if not Is.Valid(entity) then return end
+
+    local is_entity = This.SensorController:entity(entity.unit_number)
+    if not is_entity then return end
+
+    blueprint.set_blueprint_entity_tag(idx, 'is_config', is_entity.config)
 end
 
 ----------------------------------------------------------------------------------------------------

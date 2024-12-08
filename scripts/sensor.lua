@@ -38,6 +38,19 @@ local function locate_scan_controller(entity)
     return scan_controller
 end
 
+--------------------------------------------------------------------------------
+-- configure
+--------------------------------------------------------------------------------
+
+---@param self InventorySensorData
+---@param config InventorySensorConfig?
+function InventorySensor:reconfigure(config)
+    if not config then return end
+
+    self.config.enabled = config.enabled
+    self.config.read_grid = config.read_grid
+end
+
 ----------------------------------------------------------------------------------------------------
 -- create/destroy
 ----------------------------------------------------------------------------------------------------
@@ -57,16 +70,19 @@ end
 function InventorySensor.new(sensor_entity, tags)
     local data = {
         sensor_entity = sensor_entity,
-        tags = tags,
+        inventories = {},
         config = {
             enabled = true,
             read_grid = false,
             status = sensor_entity.status,
-            inventories = {},
         },
     }
 
     InventorySensor.enhance(data)
+
+    if tags then
+        data:reconfigure(tags.is_config)
+    end
 
     return data --[[@as InventorySensorData ]]
 end
@@ -226,8 +242,8 @@ function InventorySensor:load(force)
     local remaining_fuel = 0
 
     -- load inventories for the entity
-    if table_size(self.config.inventories) > 0 then
-        for inventory in pairs(self.config.inventories) do
+    if table_size(self.inventories) > 0 then
+        for inventory in pairs(self.inventories) do
             local inventory_items = self.scan_entity.get_inventory(inventory)
             if inventory_items then
                 for _, item in pairs(inventory_items.get_contents()) do
@@ -310,12 +326,12 @@ function InventorySensor:connect(entity)
 
     self.scan_entity = entity
     self.scan_interval = scan_controller.interval or scan_frequency.stationary -- unset scan interval -> stationary
+    self.inventories = table.array_to_dictionary(scan_controller.inventories or {}, true)
     self.config.scan_entity_id = entity.unit_number
-    self.config.inventories = table.array_to_dictionary(scan_controller.inventories or {}, true)
 
     -- burners also look at fuel
     if entity.burner then
-        self.config.inventories[defines.inventory.fuel] = true
+        self.inventories[defines.inventory.fuel] = true
     end
 
     self:load(true)
@@ -338,13 +354,13 @@ function InventorySensor:disconnect()
     if not self.scan_entity then return end
 
     self.scan_entity = nil
+    self.inventories = {}
     self.scan_interval = nil
     self.scan_time = nil
     self.load_time = nil
 
     self.config.scan_entity_id = nil
     self.config.status = nil
-    self.config.inventories = {}
 
     self:clear()
 

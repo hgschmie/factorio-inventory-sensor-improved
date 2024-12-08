@@ -5,10 +5,12 @@
 
 local Event = require('stdlib.event.event')
 local Is = require('stdlib.utils.is')
+local Player = require('stdlib.event.player')
 local tools = require('framework.tools')
 local const = require('lib.constants')
 
 local Gui = require('scripts.gui')
+local Sensor = require('scripts.sensor')
 
 
 --------------------------------------------------------------------------------
@@ -73,12 +75,50 @@ local function onEntityDestroyed(event)
     end
 end
 
+--------------------------------------------------------------------------------
+-- Entity move / rotate
+--------------------------------------------------------------------------------
+
 local function onEntityMoved(event)
     local entity = event and event.entity
     if not Is.Valid(entity) then return end
     This.SensorController:move(entity.unit_number)
 end
 
+--------------------------------------------------------------------------------
+-- Entity settings pasting
+--------------------------------------------------------------------------------
+
+---@param event EventData.on_entity_settings_pasted
+local function onEntitySettingsPasted(event)
+    local player = Player.get(event.player_index)
+
+    if not (Is.Valid(player) and player.force == event.source.force and player.force == event.destination.force) then return end
+
+    local src_entity = This.SensorController:entity(event.source.unit_number)
+    local dst_entity = This.SensorController:entity(event.destination.unit_number)
+
+    if not (src_entity and dst_entity) then return end
+
+    dst_entity:reconfigure(src_entity.config)
+end
+
+--------------------------------------------------------------------------------
+-- Entity cloning
+--------------------------------------------------------------------------------
+
+---@param event EventData.on_entity_cloned
+local function onEntityCloned(event)
+    -- Space Exploration Support
+    if not (Is.Valid(event.source) and Is.Valid(event.destination)) then return end
+
+    local src_data = This.SensorController:entity(event.source.unit_number)
+    if not src_data then return end
+
+    local tags = { is_config = src_data.config } -- clone the config from the src to the destination
+
+    This.SensorController:create(event.destination, tags)
+end
 
 --------------------------------------------------------------------------------
 -- Configuration changes (runtime and startup)
@@ -110,14 +150,15 @@ local function onTick()
     local entities = This.SensorController:entities()
     local process_count = math.ceil(table_size(entities) / interval)
     local index = storage.last_tick_entity
+    local entity
 
     if table_size(entities) == 0 then
         index = nil
     else
         repeat
-            index = next(entities, index)
-            local entity = This.SensorController:entity(index) --[[@as InventorySensorData ]] -- do not use second return value of next, it is missing the metatable
+            index, entity = next(entities, index)
             if entity then
+                Sensor.enhance(entity)
                 if Is.Valid(entity.sensor_entity) then
                     if entity:tick() then
                         process_count = process_count - 1
@@ -160,4 +201,10 @@ Event.register(defines.events.on_player_rotated_entity, onEntityMoved, fi_entity
 Framework.ghost_manager:register_for_ghost_names(const.inventory_sensor_name)
 
 -- Manage blueprint configuration setting
--- Framework.blueprint:register_callback(const.inventory_sensor_name, This.SensorController.blueprint_callback)
+Framework.blueprint:register_callback(const.inventory_sensor_name, This.SensorController.blueprint_callback)
+
+-- Entity settings pasting
+Event.register(defines.events.on_entity_settings_pasted, onEntitySettingsPasted, fi_entity_filter)
+
+-- Entity cloning
+Event.register(defines.events.on_entity_cloned, onEntityCloned, fi_entity_filter)
