@@ -128,14 +128,44 @@ end
 local function onConfigurationChanged(changed)
     This.SensorController:init()
 
+    -- enable inventory sensor if circuit network is researched.
     for _, force in pairs(game.forces) do
-        if force.technologies['circuit-network'].researched then
-            if force.recipes[const.inventory_sensor_name] then
-                force.recipes[const.inventory_sensor_name].enabled = true
+        if force.recipes[const.inventory_sensor_name] and force.technologies['circuit-network'] then
+            force.recipes[const.inventory_sensor_name].enabled = force.technologies['circuit-network'].researched
+        end
+    end
+
+    if Framework.settings:startup_setting(const.settings_update_inventory_sensors_name) then
+        for _, surface in pairs(game.surfaces) do
+            local entities_to_replace = surface.find_entities_filtered {
+                type = 'constant-combinator',
+                name = 'item-sensor'
+            }
+
+            for _, entity_to_replace in pairs(entities_to_replace) do
+                local can_fast_replace = surface.can_fast_replace {
+                    name = const.inventory_sensor_name,
+                    position = entity_to_replace.position,
+                    direction = entity_to_replace.direction,
+                    force = entity_to_replace.force,
+                }
+
+                local main_entity = surface.create_entity {
+                    name = prototypes.entity[const.inventory_sensor_name],
+                    position = entity_to_replace.position,
+                    direction = entity_to_replace.direction,
+                    force = entity_to_replace.force,
+                    fast_replace = true,
+                }
+                if main_entity then
+                    This.SensorController:create(main_entity)
+                    entity_to_replace.destroy()
+                end
             end
         end
     end
 
+    -- disconnect all entities, have them reconnect; this resets the config state of all entities
     for _, entity in pairs(This.SensorController:entities()) do
         entity:disconnect()
     end

@@ -13,6 +13,9 @@ local Settings = {
         [const.settings_scan_offset_name] = { key = const.settings_scan_offset, value = 0.2 },
         [const.settings_scan_range_name] = { key = const.settings_scan_range, value = 1.5 },
     },
+    startup = {
+        [const.settings_update_inventory_sensors_name] = { key = const.settings_update_inventory_sensors, value = false },
+    }
 }
 
 return Settings

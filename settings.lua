@@ -43,6 +43,14 @@ data:extend({
         setting_type = "runtime-global",
         default_value = false,
     },
+    {
+        -- replace old Inventory Sensors
+        type = "bool-setting",
+        name = const.settings_update_inventory_sensors,
+        order = "aa",
+        setting_type = "startup",
+        default_value = false,
+    },
 })
 
 --------------------------------------------------------------------------------

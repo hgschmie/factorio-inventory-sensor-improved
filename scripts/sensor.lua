@@ -354,8 +354,8 @@ function InventorySensor:disconnect()
     if not self.scan_entity then return end
 
     self.scan_entity = nil
-    self.inventories = {}
     self.scan_interval = nil
+    self.inventories = {}
     self.scan_time = nil
     self.load_time = nil
 
