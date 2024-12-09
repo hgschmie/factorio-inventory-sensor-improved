@@ -6,6 +6,7 @@
 local Event = require('stdlib.event.event')
 local Is = require('stdlib.utils.is')
 local Player = require('stdlib.event.player')
+local Version = require('stdlib.vendor.version')
 local tools = require('framework.tools')
 local const = require('lib.constants')
 
@@ -136,32 +137,37 @@ local function onConfigurationChanged(changed)
     end
 
     if Framework.settings:startup_setting(const.settings_update_inventory_sensors_name) then
-        for _, surface in pairs(game.surfaces) do
-            local entities_to_replace = surface.find_entities_filtered {
-                type = 'constant-combinator',
-                name = 'item-sensor'
-            }
-
-            for _, entity_to_replace in pairs(entities_to_replace) do
-                local can_fast_replace = surface.can_fast_replace {
-                    name = const.inventory_sensor_name,
-                    position = entity_to_replace.position,
-                    direction = entity_to_replace.direction,
-                    force = entity_to_replace.force,
+        local inv_sensor = script.active_mods['Inventory Sensor']
+        if inv_sensor and Version(inv_sensor) >= Version('2.0.3') then
+            for _, surface in pairs(game.surfaces) do
+                local entities_to_replace = surface.find_entities_filtered {
+                    type = 'constant-combinator',
+                    name = 'item-sensor'
                 }
 
-                local main_entity = surface.create_entity {
-                    name = prototypes.entity[const.inventory_sensor_name],
-                    position = entity_to_replace.position,
-                    direction = entity_to_replace.direction,
-                    force = entity_to_replace.force,
-                    fast_replace = true,
-                }
-                if main_entity then
-                    This.SensorController:create(main_entity)
-                    entity_to_replace.destroy()
+                local success, failure = 0, 0
+
+                for _, entity_to_replace in pairs(entities_to_replace) do
+                    local main_entity = surface.create_entity {
+                        name = prototypes.entity[const.inventory_sensor_name],
+                        position = entity_to_replace.position,
+                        direction = entity_to_replace.direction,
+                        force = entity_to_replace.force,
+                        fast_replace = true,
+                    }
+                    if main_entity then
+                        success = success + 1
+                        assert(not entity_to_replace.valid)
+                        This.SensorController:create(main_entity)
+                    else
+                        failure = failure + 1
+                    end
                 end
+
+                game.print(('Replaced %d inventory sensors successfully on %s, %d sensors could not be replaced'):format(success, surface.name, failure))
             end
+        else
+            game.print('Old Inventory Sensor mod not installed or version < 2.0.3. Can not migrate sensors!')
         end
     end
 
