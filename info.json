@@ -1,11 +1,11 @@
 {
   "name": "inventory-sensor-improved",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "title": "Improved Inventory Sensor",
   "description": "Shows inventory information of various entities.",
   "author": "hgschmie",
-  "contact": "https://github.com/hgschmie/factorio-inventory-sensor/issues/",
-  "homepage": "https://github.com/hgschmie/factorio-inventory-sensor",
+  "contact": "https://github.com/hgschmie/factorio-inventory-sensor-improved/issues/",
+  "homepage": "https://github.com/hgschmie/factorio-inventory-sensor-improved",
   "factorio_version": "2.0",
   "dependencies": [
     "base >= 2.0.0"
