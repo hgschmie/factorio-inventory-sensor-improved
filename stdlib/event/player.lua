@@ -49,7 +49,7 @@ end
 -- local player, player_data = Player.get(event.player_index)
 function Player.get(player)
     player = Game.get_player(player)
-    return player, storage.players and storage.players[player.index] or Player.init(player.index)
+    return player, Player.pdata(player.index)
 end
 
 --- Get the players saved data table. Creates it if it doesn't exsist.

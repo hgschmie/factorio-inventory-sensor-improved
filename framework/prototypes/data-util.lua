@@ -3,6 +3,8 @@
 -- Data Utility - from flib
 ----------------------------------------------------------------------------------------------------
 
+local util = require('util')
+
 ---@class FrameworkDataUtil
 local FrameworkDataUtil = {}
 
