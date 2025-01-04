@@ -10,6 +10,8 @@ For most entities, it reads the main inventory (or input and output for assembli
 This mod was inspired by the [Inventory Sensor](https://mods.factorio.com/mod/Inventory%20Sensor) by 0ptera. It is drop-in compatible (uses the same
 signal names and supplies the same signals) but offers more features (and different bugs).
 
+Uicons by [Flaticon](https://www.flaticon.com/uicons) provided the signal icons
+
 ## Features
 
 * GUI provides updating view of the signals created by the sensor
