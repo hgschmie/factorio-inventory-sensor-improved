@@ -71,8 +71,6 @@ function Constants:locale(id)
     return Constants:with_prefix('gui.') .. id
 end
 
-Constants.inventory_sensor_name = Constants:with_prefix(Constants.name)
-
 --------------------------------------------------------------------------------
 -- entity names and maps
 --------------------------------------------------------------------------------
