@@ -332,6 +332,13 @@ function Event.register_if(truthy, id, ...)
 end
 Event.on_event_if = Event.register_if
 
+function Event.remove_if(truthy, id, ...)
+    if truthy then
+        return Event.remove(id, ...)
+    end
+    return Event
+end
+
 -- Used to replace pcall in un-protected events.
 local function no_pcall(handler, ...)
     return true, handler(...)

@@ -580,9 +580,24 @@ end
 --- Area Conversion Methods
 -- @section Area Conversion Methods
 
+local package_cache = {}
+
+local function find_package(package_name)
+    if package_cache[package_name] then return package_cache[package_name] end
+
+    for path, contents in pairs(package.loaded) do
+        if path:match(package_name) then
+            package_cache[package_name] = contents
+            return contents
+        end
+    end
+
+    return nil
+end
+
 -- Hackish function, Factorio lua doesn't allow require inside functions because...
 local function load_area(area)
-    local Area = package.loaded[AREA_PATH]
+    local Area = find_package(AREA_PATH)
     if not Area then
         local log = log or function(_msg_)
         end
