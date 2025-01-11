@@ -106,7 +106,7 @@ function Game.get_or_set_data(sub_table, index, key, set, value)
 end
 
 function Game.write_mods()
-    game.write_file('Mods.lua', 'return ' .. inspect(script.active_mods))
+    helpers.write_file('Mods.lua', 'return ' .. inspect(script.active_mods))
 end
 
 function Game.write_statistics()
@@ -114,19 +114,19 @@ function Game.write_statistics()
     for _, force in pairs(game.forces) do
         local folder = pre .. force.name .. '/'
         for _, count_type in pairs { 'input_counts', 'output_counts' } do
-            game.write_file(folder .. 'pollution-' .. count_type .. '.json', game.table_to_json(game.pollution_statistics[count_type]))
-            game.write_file(folder .. 'item-' .. count_type .. '.json', game.table_to_json(force.item_production_statistics[count_type]))
-            game.write_file(folder .. 'fluid-' .. count_type .. '.json', game.table_to_json(force.fluid_production_statistics[count_type]))
-            game.write_file(folder .. 'kill-' .. count_type .. '.json', game.table_to_json(force.kill_count_statistics[count_type]))
-            game.write_file(folder .. 'build-' .. count_type .. '.json', game.table_to_json(force.entity_build_count_statistics[count_type]))
+            helpers.write_file(folder .. 'pollution-' .. count_type .. '.json', helpers.table_to_json(game.get_pollution_statistics(1)[count_type]))
+            helpers.write_file(folder .. 'item-' .. count_type .. '.json', helpers.table_to_json(force.get_item_production_statistics(1)[count_type]))
+            helpers.write_file(folder .. 'fluid-' .. count_type .. '.json', helpers.table_to_json(force.get_fluid_production_statistics(1)[count_type]))
+            helpers.write_file(folder .. 'kill-' .. count_type .. '.json', helpers.table_to_json(force.get_kill_count_statistics(1)[count_type]))
+            helpers.write_file(folder .. 'build-' .. count_type .. '.json', helpers.table_to_json(force.get_entity_build_count_statistics(1)[count_type]))
         end
     end
 end
 
 function Game.write_surfaces()
-    game.remove_path('surfaces')
+    helpers.remove_path('surfaces')
     for _, surface in pairs(game.surfaces) do
-        game.write_file('surfaces/' .. (surface.name or surface.index) .. '.lua', 'return ' .. inspect(surface.map_gen_settings))
+        helpers.write_file('surfaces/' .. (surface.name or surface.index) .. '.lua', 'return ' .. inspect(surface.map_gen_settings))
     end
 end
 

@@ -24,6 +24,7 @@ Math.min = math.min
 Math.deg = math.deg
 Math.sinh = math.sinh
 Math.rad = math.rad
+---@diagnostic disable-next-line: deprecated
 Math.randomseed = math.randomseed
 Math.cosh = math.cosh
 Math.modf = math.modf

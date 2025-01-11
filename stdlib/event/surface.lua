@@ -81,8 +81,8 @@ function Surface.init(event, overwrite)
 end
 
 function Surface.dump_data()
-    game.write_file(Surface.get_file_path('Surface/surface_data.lua'), inspect(Surface._new_surface_data, { longkeys = true, arraykeys = true }))
-    game.write_file(Surface.get_file_path('Surface/global.lua'), inspect(storage.surfaces or nil, { longkeys = true, arraykeys = true }))
+    helpers.write_file(Surface.get_file_path('Surface/surface_data.lua'), inspect(Surface._new_surface_data, { longkeys = true, arraykeys = true }))
+    helpers.write_file(Surface.get_file_path('Surface/global.lua'), inspect(storage.surfaces or nil, { longkeys = true, arraykeys = true }))
 end
 
 function Surface.register_init()
