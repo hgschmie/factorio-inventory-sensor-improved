@@ -19,7 +19,7 @@ local Gui = {}
 ----------------------------------------------------------------------------------------------------
 
 ---@param is_entity InventorySensorData
----@return FrameworkGuiElemDef ui
+---@return framework.gui.element_definition ui
 function Gui.getUi(is_entity)
     return {
         type = 'frame',
@@ -212,9 +212,9 @@ end
 -- helpers
 ----------------------------------------------------------------------------------------------------
 
+---@param gui framework.gui
 ---@param is_entity InventorySensorData?
----@param gui FrameworkGui
-function Gui.renderPreview(is_entity, gui)
+function Gui.render_preview(gui, is_entity)
     if not is_entity then return end
 
     local signal_view = gui:find_element('signal-view')
@@ -272,57 +272,22 @@ function Gui.renderPreview(is_entity, gui)
 end
 
 ----------------------------------------------------------------------------------------------------
--- close methods
-----------------------------------------------------------------------------------------------------
-
----@param player_index integer?
-function Gui.closeByPlayer(player_index)
-    if not player_index then return end
-
-    local player, player_data = Player.get(player_index)
-    if not player then return end
-
-    local gui = player_data.is_gui
-
-    if (not gui) then return end
-
-    Event.remove(-1, Gui.guiUpdater, nil, gui)
-    player_data.is_gui = nil
-    Framework.gui_manager:destroy_gui(gui.gui)
-end
-
----@param unit_number integer?
-function Gui.closeByEntity(unit_number)
-    if not unit_number then return end
-
-    for _, player in pairs(game.players) do
-        if player.opened then
-            local player_data = Player.pdata(player.index)
-            if player_data and player_data.is_gui and player_data.is_gui.is_id == unit_number then
-                Gui.closeByPlayer(player.index)
-            end
-        end
-    end
-end
-
-----------------------------------------------------------------------------------------------------
 -- UI Callbacks
 ----------------------------------------------------------------------------------------------------
 
 ---@param event EventData.on_gui_switch_state_changed|EventData.on_gui_checked_state_changed|EventData.on_gui_elem_changed
 ---@return InventorySensorData? is_entity
-local function locate_config(event)
-    local _, player_data = Player.get(event.player_index)
-    if not (player_data and player_data.is_gui) then return nil end
-
-    return This.SensorController:entity(player_data.is_gui.is_id) --[[@as InventorySensorData? ]]
+local function locate_entity(event)
+    local gui = Framework.gui_manager:find_gui(event.player_index)
+    if not gui then return end
+    return This.SensorController:entity(gui.entity_id) --[[@as InventorySensorData? ]]
 end
 
 --- close the UI (button or shortcut key)
 ---
 ---@param event EventData.on_gui_click|EventData.on_gui_opened
 function Gui.onWindowClosed(event)
-    Gui.closeByPlayer(event.player_index)
+    Framework.gui_manager:destroy_gui(event.player_index)
 end
 
 local on_off_values = {
@@ -336,14 +301,14 @@ local values_on_off = table.invert(on_off_values)
 ---
 ---@param event EventData.on_gui_switch_state_changed
 function Gui.onSwitchEnabled(event)
-    local is_entity = locate_config(event)
+    local is_entity = locate_entity(event)
     if not is_entity then return end
 
     is_entity.config.enabled = on_off_values[event.element.switch_state]
 end
 
 function Gui.onToggleGridRead(event)
-    local is_entity = locate_config(event)
+    local is_entity = locate_entity(event)
     if not is_entity then return end
 
     is_entity.config.read_grid = event.element.state
@@ -353,7 +318,7 @@ end
 -- GUI state updater
 ----------------------------------------------------------------------------------------------------
 
----@param gui FrameworkGui
+---@param gui framework.gui
 ---@param is_entity InventorySensorData
 local function update_config_gui_state(gui, is_entity)
     local entity_status = (not is_entity.config.enabled) and defines.entity_status.disabled -- if not enabled, status is disabled
@@ -385,10 +350,10 @@ local function update_config_gui_state(gui, is_entity)
     on_off.switch_state = values_on_off[enabled]
 end
 
----@param gui FrameworkGui
+---@param gui framework.gui
 ---@param is_entity InventorySensorData
 local function update_gui_state(gui, is_entity)
-    Gui.renderPreview(is_entity, gui)
+    Gui.render_preview(gui, is_entity)
 
     local connections = gui:find_element('connections')
     connections.caption = { 'gui-control-behavior.not-connected' }
@@ -411,21 +376,24 @@ end
 -- Event ticker
 ----------------------------------------------------------------------------------------------------
 
----@param is_gui InventorySensorGui
-function Gui.guiUpdater(ev, is_gui)
-    local is_entity = This.SensorController:entity(is_gui.is_id) --[[@as InventorySensorData ]]
-    if not is_entity then
-        Event.remove(-1, Gui.guiUpdater, nil, is_gui)
-        return
-    end
+---@param gui framework.gui
+---@return boolean
+function Gui.guiUpdater(gui)
+    local is_entity = This.SensorController:entity(gui.entity_id) --[[@as InventorySensorData ]]
+    if not is_entity then return false end
 
-    if not (is_gui.last_config and table.compare(is_gui.last_config, is_entity.config)) then
-        update_config_gui_state(is_gui.gui, is_entity)
-        is_gui.last_config = tools.copy(is_entity.config)
+    ---@type InventorySensorGuiContext
+    local context = gui.context
+
+    if not (context.last_config and table.compare(context.last_config, is_entity.config)) then
+        update_config_gui_state(gui, is_entity)
+        context.last_config = tools.copy(is_entity.config)
     end
 
     -- always update wire state and preview
-    update_gui_state(is_gui.gui, is_entity)
+    update_gui_state(gui, is_entity)
+
+    return true
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -438,11 +406,16 @@ function Gui.onGuiOpened(event)
     if not (player and player_data) then return end
 
     -- close an eventually open gui
-    Gui.closeByPlayer(event.player_index)
+    Framework.gui_manager:destroy_gui(event.player_index)
 
     local entity = event and event.entity --[[@as LuaEntity]]
-    local is_id = entity.unit_number --[[@as integer]]
-    local is_entity = This.SensorController:entity(is_id) --[[@as InventorySensorData ]]
+    if not entity then
+        player.opened = nil
+        return
+    end
+
+    assert(entity.unit_number)
+    local is_entity = This.SensorController:entity(entity.unit_number) --[[@as InventorySensorData ]]
 
     if not is_entity then
         log('Data missing for ' ..
@@ -451,19 +424,20 @@ function Gui.onGuiOpened(event)
         return
     end
 
-    local gui = Framework.gui_manager:create_gui(player.gui.screen, Gui.getUi(is_entity))
-
-    ---@class InventorySensorGui
-    ---@field gui FrameworkGui
-    ---@field is_id integer
+    ---@class InventorySensorGuiContext
     ---@field last_config InventorySensorData?
-    player_data.is_gui = {
-        gui = gui,
-        is_id = is_id,
+    local gui_state = {
         last_config = nil,
     }
 
-    Event.register(-1, Gui.guiUpdater, nil, player_data.is_gui)
+    local gui = Framework.gui_manager:create_gui {
+        player_index = event.player_index,
+        parent = player.gui.screen,
+        ui_tree = Gui.getUi(is_entity),
+        context = gui_state,
+        update_callback = Gui.guiUpdater,
+        entity_id = entity.unit_number
+    }
 
     player.opened = gui.root
 end

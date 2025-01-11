@@ -7,7 +7,9 @@ local Event = require('stdlib.event.event')
 local Is = require('stdlib.utils.is')
 local Player = require('stdlib.event.player')
 local Version = require('stdlib.vendor.version')
+
 local tools = require('framework.tools')
+
 local const = require('lib.constants')
 
 local Gui = require('scripts.gui')
@@ -62,18 +64,16 @@ local function onEntityDeleted(event)
     local unit_number = entity.unit_number
 
     This.SensorController:destroy(unit_number)
-    Gui.closeByEntity(unit_number)
+    Framework.gui_manager:destroy_gui_by_entity_id(unit_number)
 end
 
 ---@param event EventData.on_object_destroyed
-local function onEntityDestroyed(event)
+local function onObjectDestroyed(event)
     -- or a main entity?
-    local is_entity = This.SensorController:entity(event.useful_id)
-    if is_entity then
-        -- main entity destroyed
-        This.SensorController:destroy(event.useful_id)
-        Gui.closeByEntity(event.useful_id)
-    end
+    if not This.SensorController:entity(event.useful_id) then return end
+
+    This.SensorController:destroy(event.useful_id)
+    Framework.gui_manager:destroy_gui_by_entity_id(event.useful_id)
 end
 
 --------------------------------------------------------------------------------
@@ -229,7 +229,7 @@ tools.event_register(tools.CREATION_EVENTS, onEntityCreated, fi_entity_filter)
 tools.event_register(tools.DELETION_EVENTS, onEntityDeleted, fi_entity_filter)
 
 -- entity destroy
-Event.register(defines.events.on_object_destroyed, onEntityDestroyed, fi_entity_filter)
+Event.register(defines.events.on_object_destroyed, onObjectDestroyed)
 
 Event.register(defines.events.on_player_rotated_entity, onEntityMoved, fi_entity_filter)
 
