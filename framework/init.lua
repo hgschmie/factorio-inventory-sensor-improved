@@ -23,7 +23,7 @@ local Is = require('stdlib.utils.is')
 ---@field settings FrameworkSettings?
 ---@field logger FrameworkLogger?
 ---@field runtime FrameworkRuntime?
----@field gui_manager FrameworkGuiManager?
+---@field gui_manager framework.gui_manager?
 ---@field ghost_manager FrameworkGhostManager?
 ---@field blueprint FrameworkBlueprintManager?
 ---@field remote_api table<string, function>?
