@@ -233,9 +233,6 @@ Event.register(defines.events.on_object_destroyed, onObjectDestroyed)
 
 Event.register(defines.events.on_player_rotated_entity, onEntityMoved, fi_entity_filter)
 
--- manage ghost building (robot building) Register all ghosts we are interested in
-Framework.ghost_manager:register_for_ghost_names(const.inventory_sensor_name)
-
 -- Manage blueprint configuration setting
 Framework.blueprint:register_callback(const.inventory_sensor_name, This.SensorController.blueprint_callback)
 

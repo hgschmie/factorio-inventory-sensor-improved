@@ -99,7 +99,7 @@ end
 
 ---@param self InventorySensorData
 function InventorySensor:destroy()
-    self.sensor_entity.destroy()
+    self.sensor_entity = nil -- don't destroy; lifecycle is managed by the game and destroying prevents ghosts from showing
 end
 
 ---@param self InventorySensorData

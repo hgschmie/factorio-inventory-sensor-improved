@@ -3,12 +3,11 @@
 -- Supported entities / blacklist
 ------------------------------------------------------------------------
 
--- importing globals
-local const = require('lib.constants')
-
 local util = require('util')
 local table = require('stdlib.utils.table')
 local Is = require('stdlib.utils.is')
+
+local const = require('lib.constants')
 
 ------------------------------------------------------------------------
 -- helper functions

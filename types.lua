@@ -12,7 +12,7 @@
 ----------------------------------------------------------------------------------------------------
 
 ---@class ISDataController
----@field interval scan_frequency,
+---@field interval scan_frequency
 ---@field inventories defines.inventory[]
 ---@field validate (fun(entity: InventorySensorData): boolean)?
 ---@field contribute (fun(is_entity: InventorySensorData, sink: fun(filter: LogisticFilter)))?
