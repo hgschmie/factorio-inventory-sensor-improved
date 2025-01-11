@@ -246,6 +246,18 @@ styles.framework_shallow_frame_in_shallow_frame = {
     },
 }
 
+-- similar to the subheader frame definition in e.g. the constant combinator
+-- matches its look and feel.
+styles.framework_subheader_frame = {
+    type = 'frame_style',
+    parent = 'subheader_frame',
+    top_margin = -8,
+    left_margin = -12,
+    right_margin = -12,
+    horizontally_stretchable = 'on',
+    vertically_stretchable = 'on',
+}
+
 -- IMAGE STYLES
 
 styles.framework_indicator = {

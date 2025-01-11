@@ -56,148 +56,142 @@ function Gui.getUi(is_entity)
                     },
                 },
             }, -- Title Bar End
-            {  -- Body
+            { -- Body
                 type = 'frame',
-                style = 'inside_shallow_frame_packed',
-                direction = 'vertical',
+                style = 'entity_frame',
+                style_mods = { width = 400, },
                 children = {
                     {
-                        type = 'frame',
-                        direction = 'horizontal',
+                        type = 'flow',
+                        style = 'two_module_spacing_vertical_flow',
+                        direction = 'vertical',
                         children = {
                             {
-                                type = 'label',
-                                style = 'subheader_label',
-                                name = 'connections',
-                            },
-                            {
-                                type = 'label',
-                                style = 'label',
-                                name = 'connection-red',
-                                visible = false,
-                            },
-                            {
-                                type = 'label',
-                                style = 'label',
-                                name = 'connection-green',
-                                visible = false,
-                            },
-                            {
-                                type = 'empty-widget',
-                                style_mods = { horizontally_stretchable = true },
-                            },
-                        },
-                    },
-                    {
-                        type = 'frame',
-                        style = 'entity_frame',
-                        style_mods = { width = 400, },
-                        children = {
-                            {
-                                type = 'flow',
-                                style = 'two_module_spacing_vertical_flow',
-                                direction = 'vertical',
+                                type = 'frame',
+                                direction = 'horizontal',
+                                style = 'framework_subheader_frame',
                                 children = {
                                     {
-                                        type = 'flow',
-                                        style = 'framework_indicator_flow',
-                                        children = {
-                                            {
-                                                type = 'sprite',
-                                                name = 'lamp',
-                                                style = 'framework_indicator',
-                                            },
-                                            {
-                                                type = 'label',
-                                                style = 'label',
-                                                name = 'status',
-                                            },
-                                            {
-                                                type = 'empty-widget',
-                                                style_mods = { horizontally_stretchable = true },
-                                            },
-                                            {
-                                                type = 'label',
-                                                style = 'label',
-                                                caption = 'ID: ' .. is_entity.sensor_entity.unit_number,
-                                            },
-                                        },
-                                    },
-                                    {
-                                        type = 'frame',
-                                        style = 'deep_frame_in_shallow_frame',
-                                        name = 'preview_frame',
-                                        children = {
-                                            {
-                                                type = 'entity-preview',
-                                                name = 'preview',
-                                                style = 'wide_entity_button',
-                                                elem_mods = { entity = is_entity.sensor_entity },
-                                            },
-                                        },
+                                        type = 'label',
+                                        style = 'subheader_label',
+                                        name = 'connections',
                                     },
                                     {
                                         type = 'label',
-                                        style = 'semibold_label',
-                                        caption = { 'gui-constant.output' },
+                                        style = 'label',
+                                        name = 'connection-red',
+                                        visible = false,
                                     },
                                     {
-                                        type = 'switch',
-                                        name = 'on-off',
-                                        right_label_caption = { 'gui-constant.on' },
-                                        left_label_caption = { 'gui-constant.off' },
-                                        handler = { [defines.events.on_gui_switch_state_changed] = Gui.onSwitchEnabled },
+                                        type = 'label',
+                                        style = 'label',
+                                        name = 'connection-green',
+                                        visible = false,
                                     },
                                     {
-                                        type = 'flow',
-                                        style = 'framework_indicator_flow',
-                                        children = {
-                                            {
-                                                type = 'label',
-                                                style = 'semibold_label',
-                                                caption = { const:locale('inv-status-label') },
-                                            },
-                                            {
-                                                type = 'label',
-                                                style = 'label',
-                                                name = 'inv-status',
-                                            },
-                                            {
-                                                type = 'empty-widget',
-                                                style_mods = { horizontally_stretchable = true },
-                                            },
-                                        },
-                                    },
-                                    {
-                                        type = 'checkbox',
-                                        caption = { const:locale('read-grid') },
-                                        name = 'read-grid',
-                                        handler = { [defines.events.on_gui_checked_state_changed] = Gui.onToggleGridRead },
-                                        state = false,
+                                        type = 'empty-widget',
+                                        style_mods = { horizontally_stretchable = true },
                                     },
                                 },
                             },
-                        },
-                    },
-                    {
-                        type = 'scroll-pane',
-                        style = 'logistic_sections_scroll_pane',
-                        direction = 'vertical',
-                        name = 'signal-view-pane',
-                        visible = false,
-                        vertical_scroll_policy = 'auto-and-reserve-space',
-                        horizontal_scroll_policy = 'never',
-                        style_mods = {
-                            horizontally_stretchable = true,
-                        },
-                        children = {
                             {
-                                type = 'table',
-                                style = 'filter_slot_table',
-                                name = 'signal-view',
-                                column_count = 10,
+                                type = 'flow',
+                                style = 'framework_indicator_flow',
+                                children = {
+                                    {
+                                        type = 'sprite',
+                                        name = 'lamp',
+                                        style = 'framework_indicator',
+                                    },
+                                    {
+                                        type = 'label',
+                                        style = 'label',
+                                        name = 'status',
+                                    },
+                                    {
+                                        type = 'empty-widget',
+                                        style_mods = { horizontally_stretchable = true },
+                                    },
+                                    {
+                                        type = 'label',
+                                        style = 'label',
+                                        caption = 'ID: ' .. is_entity.sensor_entity.unit_number,
+                                    },
+                                },
+                            },
+                            {
+                                type = 'frame',
+                                style = 'deep_frame_in_shallow_frame',
+                                name = 'preview_frame',
+                                children = {
+                                    {
+                                        type = 'entity-preview',
+                                        name = 'preview',
+                                        style = 'wide_entity_button',
+                                        elem_mods = { entity = is_entity.sensor_entity },
+                                    },
+                                },
+                            },
+                            {
+                                type = 'label',
+                                style = 'semibold_label',
+                                caption = { 'gui-constant.output' },
+                            },
+                            {
+                                type = 'switch',
+                                name = 'on-off',
+                                right_label_caption = { 'gui-constant.on' },
+                                left_label_caption = { 'gui-constant.off' },
+                                handler = { [defines.events.on_gui_switch_state_changed] = Gui.onSwitchEnabled },
+                            },
+                            {
+                                type = 'flow',
+                                style = 'framework_indicator_flow',
+                                children = {
+                                    {
+                                        type = 'label',
+                                        style = 'semibold_label',
+                                        caption = { const:locale('inv-status-label') },
+                                    },
+                                    {
+                                        type = 'label',
+                                        style = 'label',
+                                        name = 'inv-status',
+                                    },
+                                    {
+                                        type = 'empty-widget',
+                                        style_mods = { horizontally_stretchable = true },
+                                    },
+                                },
+                            },
+                            {
+                                type = 'checkbox',
+                                caption = { const:locale('read-grid') },
+                                name = 'read-grid',
+                                handler = { [defines.events.on_gui_checked_state_changed] = Gui.onToggleGridRead },
+                                state = false,
+                            },
+                            {
+                                type = 'scroll-pane',
+                                style = 'logistic_sections_scroll_pane',
+                                direction = 'vertical',
+                                name = 'signal-view-pane',
+                                visible = false,
+                                vertical_scroll_policy = 'auto-and-reserve-space',
+                                horizontal_scroll_policy = 'never',
                                 style_mods = {
-                                    vertical_spacing = 4,
+                                    horizontally_stretchable = true,
+                                },
+                                children = {
+                                    {
+                                        type = 'table',
+                                        style = 'filter_slot_table',
+                                        name = 'signal-view',
+                                        column_count = 10,
+                                        style_mods = {
+                                            vertical_spacing = 4,
+                                        },
+                                    },
                                 },
                             },
                         },
