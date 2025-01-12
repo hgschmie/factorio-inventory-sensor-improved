@@ -1,7 +1,10 @@
 ---------------------------------------------------------------------------------------------------
-Version: 1.0.2
-Date: ????
+Version: 1.1.0
+Date: 2025-01-12
   Changes:
+    - Lots of performance optimizations
+    - Address some multi-player crashes
+    - Update GUI to be more like other combinator GUIs
 ---------------------------------------------------------------------------------------------------
 Version: 1.0.1
 Date: 2024-12-09

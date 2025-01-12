@@ -238,7 +238,7 @@ function Gui.render_preview(gui, is_data)
                     type = 'sprite-button',
                     sprite = sprite_type .. '/' .. signal_name,
                     number = filter.min,
-                    style = 'compact_slot', -- 'slot_button',
+                    style = 'compact_slot',
                     tooltip = prototypes[signal_type][signal_name].localised_name,
                 }
 
