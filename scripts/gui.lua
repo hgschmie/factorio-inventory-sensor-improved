@@ -2,6 +2,7 @@
 ------------------------------------------------------------------------
 -- Inventory Sensor GUI
 ------------------------------------------------------------------------
+assert(script)
 
 local Event = require('stdlib.event.event')
 local Player = require('stdlib.event.player')
@@ -451,10 +452,15 @@ end
 -- Event registration
 ----------------------------------------------------------------------------------------------------
 
-local match_inventory_sensor = tools.create_event_entity_matcher('name', const.inventory_sensor_name)
-local match_ghost_inventory_sensor = tools.create_event_ghost_entity_matcher('ghost_name', const.inventory_sensor_name)
+local function register_events()
+    local match_inventory_sensor = tools.create_event_entity_matcher('name', const.inventory_sensor_name)
+    local match_ghost_inventory_sensor = tools.create_event_ghost_entity_matcher('ghost_name', const.inventory_sensor_name)
 
-Event.on_event(defines.events.on_gui_opened, Gui.onGuiOpened, match_inventory_sensor)
-Event.on_event(defines.events.on_gui_opened, Gui.onGhostGuiOpened, match_ghost_inventory_sensor)
+    Event.on_event(defines.events.on_gui_opened, Gui.onGuiOpened, match_inventory_sensor)
+    Event.on_event(defines.events.on_gui_opened, Gui.onGhostGuiOpened, match_ghost_inventory_sensor)
+end
+
+Event.on_init(register_events)
+Event.on_load(register_events)
 
 return Gui

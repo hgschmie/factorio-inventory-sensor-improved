@@ -2,5 +2,5 @@
 -- data phase 3
 ------------------------------------------------------------------------
 
-require('lib.init')('data')
-require('framework.other-mods').data_final_fixes()
+require('lib.init')
+Framework.post_data_final_fixes_stage()

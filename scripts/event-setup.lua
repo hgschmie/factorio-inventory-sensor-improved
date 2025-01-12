@@ -2,6 +2,7 @@
 --------------------------------------------------------------------------------
 -- event setup for the mod
 --------------------------------------------------------------------------------
+assert(script)
 
 local Event = require('stdlib.event.event')
 local Is = require('stdlib.utils.is')
@@ -12,22 +13,7 @@ local tools = require('framework.tools')
 
 local const = require('lib.constants')
 
-local Gui = require('scripts.gui')
 local Sensor = require('scripts.sensor')
-
-
---------------------------------------------------------------------------------
--- mod init/load code
---------------------------------------------------------------------------------
-
-local function onInitInvSensor()
-    This.SensorController:init()
-end
-
-local function onLoadInvSensor()
-end
-
---------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
 -- entity create / delete
@@ -138,38 +124,40 @@ local function onConfigurationChanged(changed)
 
     if Framework.settings:startup_setting(const.settings_update_inventory_sensors_name) then
         local inv_sensor = script.active_mods['Inventory Sensor']
-        if inv_sensor and Version(inv_sensor) >= Version('2.0.3') then
-            for _, surface in pairs(game.surfaces) do
-                local entities_to_replace = surface.find_entities_filtered {
-                    type = 'constant-combinator',
-                    name = 'item-sensor'
-                }
-
-                local success, failure = 0, 0
-
-                for _, entity_to_replace in pairs(entities_to_replace) do
-                    local main_entity = surface.create_entity {
-                        name = prototypes.entity[const.inventory_sensor_name],
-                        position = entity_to_replace.position,
-                        direction = entity_to_replace.direction,
-                        force = entity_to_replace.force,
-                        fast_replace = true,
+        if inv_sensor then
+            if Version(inv_sensor) >= Version('2.0.3') then
+                for _, surface in pairs(game.surfaces) do
+                    local entities_to_replace = surface.find_entities_filtered {
+                        type = 'constant-combinator',
+                        name = 'item-sensor'
                     }
-                    if main_entity then
-                        success = success + 1
-                        assert(not entity_to_replace.valid)
-                        This.SensorController:create(main_entity)
-                    else
-                        failure = failure + 1
+
+                    local success, failure = 0, 0
+
+                    for _, entity_to_replace in pairs(entities_to_replace) do
+                        local main_entity = surface.create_entity {
+                            name = prototypes.entity[const.inventory_sensor_name],
+                            position = entity_to_replace.position,
+                            direction = entity_to_replace.direction,
+                            force = entity_to_replace.force,
+                            fast_replace = true,
+                        }
+                        if main_entity then
+                            success = success + 1
+                            assert(not entity_to_replace.valid)
+                            This.SensorController:create(main_entity)
+                        else
+                            failure = failure + 1
+                        end
+                    end
+
+                    if success + failure > 0 then
+                        game.print(('Replaced %d inventory sensors successfully on %s, %d sensors could not be replaced'):format(success, surface.name, failure))
                     end
                 end
-
-                if success + failure > 0 then
-                    game.print(('Replaced %d inventory sensors successfully on %s, %d sensors could not be replaced'):format(success, surface.name, failure))
-                end
+            else
+                game.print('Old Inventory Sensor version < 2.0.3. Can not migrate sensors!')
             end
-        else
-            game.print('Old Inventory Sensor mod not installed or version < 2.0.3. Can not migrate sensors!')
         end
     end
 
@@ -223,32 +211,50 @@ end
 -- event registration
 --------------------------------------------------------------------------------
 
-local fi_entity_filter = tools.create_event_entity_matcher('name', const.inventory_sensor_name)
+local function register_events()
+    local fi_entity_filter = tools.create_event_entity_matcher('name', const.inventory_sensor_name)
+
+    -- Configuration changes (runtime and startup)
+    Event.on_configuration_changed(onConfigurationChanged)
+    Event.register(defines.events.on_runtime_mod_setting_changed, onConfigurationChanged)
+
+    Event.register(defines.events.on_tick, onTick)
+
+    -- entity creation/deletion
+    tools.event_register(tools.CREATION_EVENTS, onEntityCreated, fi_entity_filter)
+    tools.event_register(tools.DELETION_EVENTS, onEntityDeleted, fi_entity_filter)
+
+    -- entity destroy
+    Event.register(defines.events.on_object_destroyed, onObjectDestroyed)
+
+    Event.register(defines.events.on_player_rotated_entity, onEntityMoved, fi_entity_filter)
+
+    -- Manage blueprint configuration setting
+    Framework.blueprint:register_callback(const.inventory_sensor_name, This.SensorController.blueprint_callback)
+
+    -- Entity settings pasting
+    Event.register(defines.events.on_entity_settings_pasted, onEntitySettingsPasted, fi_entity_filter)
+
+    -- Entity cloning
+    Event.register(defines.events.on_entity_cloned, onEntityCloned, fi_entity_filter)
+end
+
+--------------------------------------------------------------------------------
+-- mod init/load code
+--------------------------------------------------------------------------------
+
+local function on_init()
+    This.SensorController:init()
+    register_events()
+end
+
+local function on_load()
+    register_events()
+end
+
+-- setup player management
+Player.register_events(true)
 
 -- mod init code
-Event.on_init(onInitInvSensor)
-Event.on_load(onLoadInvSensor)
-
--- Configuration changes (runtime and startup)
-Event.on_configuration_changed(onConfigurationChanged)
-Event.register(defines.events.on_runtime_mod_setting_changed, onConfigurationChanged)
-
-Event.register(defines.events.on_tick, onTick)
-
--- entity creation/deletion
-tools.event_register(tools.CREATION_EVENTS, onEntityCreated, fi_entity_filter)
-tools.event_register(tools.DELETION_EVENTS, onEntityDeleted, fi_entity_filter)
-
--- entity destroy
-Event.register(defines.events.on_object_destroyed, onObjectDestroyed)
-
-Event.register(defines.events.on_player_rotated_entity, onEntityMoved, fi_entity_filter)
-
--- Manage blueprint configuration setting
-Framework.blueprint:register_callback(const.inventory_sensor_name, This.SensorController.blueprint_callback)
-
--- Entity settings pasting
-Event.register(defines.events.on_entity_settings_pasted, onEntitySettingsPasted, fi_entity_filter)
-
--- Entity cloning
-Event.register(defines.events.on_entity_cloned, onEntityCloned, fi_entity_filter)
+Event.on_init(on_init)
+Event.on_load(on_load)

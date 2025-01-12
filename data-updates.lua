@@ -2,5 +2,5 @@
 -- data phase 2
 ------------------------------------------------------------------------
 
-require('lib.init')('data')
-require('framework.other-mods').data_updates()
+require('lib.init')
+Framework.post_data_updates_stage()

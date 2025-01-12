@@ -1,4 +1,4 @@
-require('lib.init')('settings')
+require('lib.init')
 
 local const = require('lib.constants')
 
@@ -55,4 +55,4 @@ data:extend({
 
 --------------------------------------------------------------------------------
 
-require('framework.other-mods').settings()
+Framework.post_settings_stage()

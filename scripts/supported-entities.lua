@@ -2,6 +2,7 @@
 ------------------------------------------------------------------------
 -- Supported entities / blacklist
 ------------------------------------------------------------------------
+assert(script)
 
 local util = require('util')
 local table = require('stdlib.utils.table')
