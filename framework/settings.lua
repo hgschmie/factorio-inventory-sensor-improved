@@ -193,14 +193,17 @@ end
 if script then
     local Event = require('stdlib.event.event')
 
-    -- Runtime settings changed
-    Event.register(defines.events.on_runtime_mod_setting_changed, function()
-        FrameworkSettings:flush()
-    end)
+    local function flush()
+        Framework.settings:flush()
+    end
 
-    Event.on_configuration_changed(function()
-        FrameworkSettings:flush()
-    end)
+    local function register_events()
+        Event.on_configuration_changed(flush)
+        Event.register(defines.events.on_runtime_mod_setting_changed, flush)
+    end
+
+    Event.on_init(register_events)
+    Event.on_load(register_events)
 end
 
 return FrameworkSettings

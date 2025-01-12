@@ -166,8 +166,17 @@ function FrameworkBlueprintManager:register_preprocessor(callback)
     self.prepare_blueprint = callback
 end
 
--- Blueprint management
-Event.register(defines.events.on_player_setup_blueprint, onPlayerSetupBlueprint)
-Event.register(defines.events.on_player_configured_blueprint, onPlayerConfiguredBlueprint)
+--------------------------------------------------------------------------------
+-- event registration
+--------------------------------------------------------------------------------
+
+local function register_events()
+    -- Blueprint management
+    Event.register(defines.events.on_player_setup_blueprint, onPlayerSetupBlueprint)
+    Event.register(defines.events.on_player_configured_blueprint, onPlayerConfiguredBlueprint)
+end
+
+Event.on_init(register_events)
+Event.on_load(register_events)
 
 return FrameworkBlueprintManager

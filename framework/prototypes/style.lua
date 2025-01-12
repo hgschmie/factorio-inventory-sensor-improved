@@ -4,6 +4,8 @@
 
 local data_util = require('framework.prototypes.data-util')
 
+if not data.raw['gui-style'] then return end
+
 local styles = data.raw['gui-style'].default
 
 local slot_tileset = Framework.ROOT .. '/framework/graphics/slots.png'

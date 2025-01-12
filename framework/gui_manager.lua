@@ -178,19 +178,24 @@ local function gui_update_tick()
     end
 end
 
-------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- event registration
+--------------------------------------------------------------------------------
 
--- register all gui events with the framework
-for name, id in pairs(defines.events) do
-    if name:starts_with('on_gui_') then
-        Event.on_event(id, function(ev)
-            Framework.gui_manager:dispatch(ev)
-        end)
+local function register_events()
+    -- register all gui events with the framework
+    for name, id in pairs(defines.events) do
+        if name:starts_with('on_gui_') then
+            Event.on_event(id, function(ev)
+                Framework.gui_manager:dispatch(ev)
+            end)
+        end
     end
+
+    Event.on_nth_tick(GUI_UPDATE_TICK_INTERVAL, gui_update_tick)
 end
 
-------------------------------------------------------------------------
-
-Event.on_nth_tick(GUI_UPDATE_TICK_INTERVAL, gui_update_tick)
+Event.on_init(register_events)
+Event.on_load(register_events)
 
 return FrameworkGuiManager

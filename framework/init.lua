@@ -26,6 +26,7 @@ local Is = require('stdlib.utils.is')
 ---@field gui_manager framework.gui_manager?
 ---@field ghost_manager FrameworkGhostManager?
 ---@field blueprint FrameworkBlueprintManager?
+---@field other_mods framework.OtherModsManager
 ---@field remote_api table<string, function>?
 ---@field render FrameworkRender?
 Framework = {
@@ -66,11 +67,18 @@ Framework = {
 --- called in runtime stage
 ---@param config FrameworkConfig
 function Framework:init_runtime(config)
-    if not script then return end
     -- runtime stage
     self.runtime = self.runtime or require('framework.runtime')
 
     self.logger:init()
+
+    self.logger:log('================================================================================')
+    self.logger:log('==')
+    self.logger:logf("== Framework logfile for '%s' mod intialized ", Framework.NAME)     --(debug mode: %s)", Framework.NAME, tostring(self.debug_mode))
+    self.logger:log('==')
+    self.logger:logf('== Run ID: %d', Framework.RUN_ID)
+    self.logger:log('================================================================================')
+    self.logger:flush()
 
     self.gui_manager = self.gui_manager or require('framework.gui_manager')
     self.ghost_manager = self.ghost_manager or require('framework.ghost_manager')
@@ -84,17 +92,10 @@ function Framework:init_runtime(config)
     end
 end
 
---- called in data stage
----@param config FrameworkConfig
-function Framework:init_data(config)
-    require('framework.prototype')
-end
-
 --- Initialize the core framework.
 --- the code itself references the global Framework table.
 ---@param config FrameworkConfig|function():FrameworkConfig config provider
----@param stage 'data', 'settings' or 'runtime'
-function Framework:init(config, stage)
+function Framework:init(config)
     assert(Is.Function(config) or Is.Table(config), 'configuration must either be a table or a function that provides a table')
     if Is.Function(config) then
         config = config()
@@ -109,17 +110,40 @@ function Framework:init(config, stage)
     self.PREFIX = config.prefix
     self.ROOT = config.root
 
+    -- load only once per stage
     self.settings = self.settings or require('framework.settings') --[[ @as FrameworkSettings ]]
     self.logger = self.logger or require('framework.logger') --[[ @as FrameworkLogger ]]
+    self.other_mods = self.other_mods or require('framework.other-mods')
 
-    local stage_name = 'init_' .. stage
-    if self[stage_name] then
-        self[stage_name](self, config --[[@as FrameworkConfig]])
+    if data and data.raw['gui-style'] then
+        -- data stage
+        require('framework.prototype')
+    elseif script then
+        -- runtime stage
+        self:init_runtime(config --[[@as FrameworkConfig]])
     end
 
     return self
 end
 
 ---------------------------------------------------------------------------------------------------
+-- add meta methods
+---------------------------------------------------------------------------------------------------
+
+local game_stages = { 'settings', 'data', 'data_updates', 'data_final_fixes', 'runtime' }
+
+local Framework_mt = {}
+setmetatable(Framework, Framework_mt)
+
+local prototype = {}
+
+for _, game_stage in pairs(game_stages) do
+    prototype['post_' .. game_stage .. '_stage'] = function()
+        -- otherwise, it is an stage method, pass it to the submodules
+        Framework.other_mods[game_stage]() -- other-mods subsystem
+    end
+end
+
+Framework_mt.__index = prototype
 
 return Framework

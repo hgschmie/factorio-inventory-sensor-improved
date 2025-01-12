@@ -182,6 +182,15 @@ function FrameworkGhostManager:register_for_ghost_refresh(names, callback)
     end
 end
 
-Event.register(defines.events.on_object_destroyed, onObjectDestroyed)
+--------------------------------------------------------------------------------
+-- event registration
+--------------------------------------------------------------------------------
+
+local function register_events()
+    Event.register(defines.events.on_object_destroyed, onObjectDestroyed)
+end
+
+Event.on_init(register_events)
+Event.on_load(register_events)
 
 return FrameworkGhostManager

@@ -36,6 +36,15 @@ local function onSelectedEntityChanged(event)
     Framework.render:clearRenderedText(event.player_index)
 end
 
-Event.register(defines.events.on_selected_entity_changed, onSelectedEntityChanged)
+--------------------------------------------------------------------------------
+-- event registration
+--------------------------------------------------------------------------------
+
+local function register_events()
+    Event.register(defines.events.on_selected_entity_changed, onSelectedEntityChanged)
+end
+
+Event.on_init(register_events)
+Event.on_load(register_events)
 
 return Rendering

@@ -120,19 +120,24 @@ function Player.update_force(event)
     pdata.force = player.force.name
 end
 
-function Player.register_init()
-    Event.register(Event.core_events.init, Player.init)
-    return Player
-end
-
-function Player.register_events(do_on_init)
+local function register_events()
     Event.register(defines.events.on_player_created, Player.init)
     Event.register(defines.events.on_player_changed_force, Player.update_force)
     Event.register(defines.events.on_player_removed, Player.remove)
+end
 
-    if do_on_init then
-        Player.register_init()
-    end
+function Player.register_init()
+    Event.on_init(Player.init)
+    return Player
+end
+
+--- Do not call from an event handler, add directly to startup code
+---@param do_on_init boolean If true, register 'Player.init' for the on_init event
+function Player.register_events(do_on_init)
+    Event.on_init(register_events)
+    Event.on_load(register_events)
+
+    if do_on_init then Player.register_init() end
 
     return Player
 end
