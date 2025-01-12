@@ -32,10 +32,6 @@ function FrameworkGhostManager:state()
     return storage.ghost_manager
 end
 
-local function onTick()
-    Framework.ghost_manager:tick()
-end
-
 ---@param entity LuaEntity
 ---@param player_index integer
 function FrameworkGhostManager:registerGhost(entity, player_index)
@@ -178,12 +174,14 @@ function FrameworkGhostManager:register_for_ghost_refresh(names, callback)
     if type(names) ~= 'table' then
         names = { names }
     end
+
+    Event.register_if(table_size(self.refresh_callbacks) == 0, -TICK_INTERVAL, function(ev) Framework.ghost_manager:tick() end)
+
     for _, name in pairs(names) do
         self.refresh_callbacks[name] = callback
     end
 end
 
 Event.register(defines.events.on_object_destroyed, onObjectDestroyed)
-Event.on_nth_tick(TICK_INTERVAL, onTick)
 
 return FrameworkGhostManager
