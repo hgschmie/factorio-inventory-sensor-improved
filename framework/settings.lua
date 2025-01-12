@@ -16,42 +16,39 @@ local setting_types = {
 
 --- Access to all mod settings
 ---@class FrameworkSettings
----@field definitions table<FrameworkSettings.name, FrameworkSettingsGroup>
 local FrameworkSettings = {
-    --- Contains setting definitions
-    -- Each field must be a table with `setting = <default value>` items, as well as containing a
-    -- `NAMES` table mapping settings fields to their in-game names (fields not present in NAMES will
-    -- be ignored).
-    definitions = {
-        startup = {},
-        runtime = {
-            debug_mode = { key = Framework.PREFIX .. 'debug-mode', value = false }
-        },
-        player = {},
-    }
 }
 
 ---@type table<FrameworkSettings.name, FrameworkSettingsProvider>
 local settings_table = {
     startup = {
         values = nil,
+        definitions = {},
         load_value = function(name) return settings.startup[name] end,
         get_values = function(self) return self.values end,
-        set_values = function(self, values) self.values = values end,
+        init_values = function(self)
+            self.values = {}
+            return self.values
+            end,
         clear = function(self) self.values = nil end,
     },
 
     runtime = {
         values = nil,
+        definitions = { debug_mode = { key = Framework.PREFIX .. 'debug-mode', value = false } },
         load_value = function(name) return settings.global[name] end,
         store_value = function(name, value) settings.global[name] = { value = value } end,
         get_values = function(self) return self.values end,
-        set_values = function(self, values) self.values = values end,
+        init_values = function(self)
+            self.values = {}
+            return self.values
+            end,
         clear = function(self) self.values = nil end,
     },
 
     player = {
         values = {},
+        definitions = {},
         load_value = function(name, player_index)
             if player_index then
                 return settings.get_player_settings(player_index)[name]
@@ -70,9 +67,10 @@ local settings_table = {
             local index = player_index or 'default'
             return self.values[index]
         end,
-        set_values = function(self, values, player_index)
+        init_values = function(self, player_index)
             local index = player_index or 'default'
-            self.values[index] = values
+            self.values[index] = {}
+            return self.values[index]
         end,
         clear = function(self, player_index)
             if player_index then
@@ -89,8 +87,8 @@ local settings_table = {
 ---@return self FrameworkSettings
 function FrameworkSettings:add_defaults(definitions)
     for key in pairs(setting_types) do
-        if definitions[key] then
-            table.merge(self.definitions[key], definitions[key])
+        if settings_table[key].definitions then
+            table.merge(settings_table[key].definitions, definitions[key])
             settings_table[key]:clear()
         end
     end
@@ -105,18 +103,18 @@ end
 function FrameworkSettings:get_settings(setting_type, player_index)
     local settings_group = settings_table[setting_type]
 
-    if (not settings_group:get_values(player_index)) then
-        local definition = self.definitions[setting_type]
-        local values = {}
-        settings_group:set_values(values, player_index)
+    local values = settings_group:get_values(player_index)
+    if values then return values end
 
-        for key, setting_def in pairs(definition) do
-            local setting = settings_group.load_value(setting_def.key, player_index)
-            values[key] = (setting and (setting.value ~= nil) and setting.value) or setting_def.value
-        end
-        Framework.logger:debugf("Loaded '%s' settings: %s", setting_type, serpent.line(settings_group:get_values()))
+    values = settings_group:init_values(player_index)
+
+    for key, setting_def in pairs(settings_group.definitions) do
+        local setting = settings_group.load_value(setting_def.key, player_index)
+        values[key] = (setting and (setting.value ~= nil) and setting.value) or setting_def.value
     end
-    return settings_group:get_values(player_index) or error('Failed to load ' .. setting_type .. ' settings.')
+
+    Framework.logger:debugf("Loaded '%s' settings: %s", setting_type, serpent.line(settings_group:get_values()))
+    return values
 end
 
 ---@param setting_type FrameworkSettings.name Setting setting_type. Valid values are "startup", "runtime" and "player"
