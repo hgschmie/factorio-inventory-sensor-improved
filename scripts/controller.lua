@@ -18,13 +18,13 @@ local InventorySensorController = {}
 -- init setup
 ------------------------------------------------------------------------
 
---- Setup the global fico data structure.
+--- Setup the global inventory sensor data structure.
 function InventorySensorController:init()
     storage.is_data = storage.is_data or {
         is = {},
         count = 0,
         VERSION = const.current_version,
-    } --[[@as InvSensorStorage ]]
+    } --[[@as inventory_sensor.Storage ]]
 end
 
 ------------------------------------------------------------------------
@@ -38,39 +38,31 @@ function InventorySensorController:totalCount()
 end
 
 --- Returns data for all inventory sensors.
----@return InventorySensorData[] entities
+---@return inventory_sensor.Data[] entities
 function InventorySensorController:entities()
-    local result = {}
-    for index, entity in pairs(storage.is_data.is) do
-        Sensor.enhance(entity)
-        result[index] = entity
-    end
-
-    return result
+    return storage.is_data.is
 end
 
 --- Returns data for a given inventory sensor
 ---@param entity_id integer main unit number (== entity id)
----@return InventorySensorData? entity
+---@return inventory_sensor.Data? entity
 function InventorySensorController:entity(entity_id)
-    local result = storage.is_data.is[entity_id]
-    Sensor.enhance(result)
-    return result
+    return storage.is_data.is[entity_id]
 end
 
 --- Sets or clears a inventory sensor entity
 ---@param entity_id integer The unit_number of the primary
----@param is_entity InventorySensorData?
-function InventorySensorController:setEntity(entity_id, is_entity)
-    assert((is_entity ~= nil and storage.is_data.is[entity_id] == nil)
-        or (is_entity == nil and storage.is_data.is[entity_id] ~= nil))
+---@param is_data inventory_sensor.Data?
+function InventorySensorController:setEntity(entity_id, is_data)
+    assert((is_data ~= nil and storage.is_data.is[entity_id] == nil)
+        or (is_data == nil and storage.is_data.is[entity_id] ~= nil))
 
-    if (is_entity) then
-        assert(is_entity:validate(entity_id))
+    if (is_data) then
+        assert(Sensor.validate(is_data, entity_id))
     end
 
-    storage.is_data.is[entity_id] = is_entity
-    storage.is_data.count = storage.is_data.count + ((is_entity and 1) or -1)
+    storage.is_data.is[entity_id] = is_data
+    storage.is_data.count = storage.is_data.count + ((is_data and 1) or -1)
 
     if storage.is_data.count < 0 then
         storage.is_data.count = table_size(storage.is_data.is)
@@ -87,11 +79,11 @@ end
 function InventorySensorController:create(main_entity, tags)
     main_entity.rotatable = true
 
-    local sensor_entity = Sensor.new(main_entity, tags)
-    self:setEntity(main_entity.unit_number, sensor_entity)
+    local is_data = Sensor.new(main_entity, tags)
+    self:setEntity(main_entity.unit_number, is_data)
 
     -- initial scan when created
-    sensor_entity:scan()
+    Sensor.scan(is_data)
 end
 
 ------------------------------------------------------------------------
@@ -100,10 +92,10 @@ end
 
 --@param unit_number integer
 function InventorySensorController:destroy(unit_number)
-    local is_data = self:entity(unit_number) --[[@as InventorySensorData ]]
+    local is_data = self:entity(unit_number)
     if not is_data then return end
 
-    is_data:destroy()
+    Sensor.destroy(is_data)
     self:setEntity(unit_number, nil)
 end
 
@@ -113,10 +105,10 @@ end
 
 --@param unit_number integer
 function InventorySensorController:move(unit_number)
-    local is_data = self:entity(unit_number) --[[@as InventorySensorData ]]
+    local is_data = self:entity(unit_number)
     if not is_data then return end
 
-    is_data:scan(true)
+    Sensor.scan(is_data, true)
 end
 
 --------------------------------------------------------------------------------
@@ -130,10 +122,10 @@ end
 function InventorySensorController.blueprint_callback(entity, idx, blueprint, context)
     if not Is.Valid(entity) then return end
 
-    local is_entity = This.SensorController:entity(entity.unit_number)
-    if not is_entity then return end
+    local is_data = This.SensorController:entity(entity.unit_number)
+    if not is_data then return end
 
-    blueprint.set_blueprint_entity_tag(idx, 'is_config', is_entity.config)
+    blueprint.set_blueprint_entity_tag(idx, 'is_config', is_data.config)
 end
 
 ----------------------------------------------------------------------------------------------------

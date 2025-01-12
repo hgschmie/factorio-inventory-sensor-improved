@@ -5,8 +5,9 @@
 
 local const = require('lib.constants')
 
-local Is = require('stdlib.utils.is')
 local Area = require('stdlib.area.area')
+local Direction = require('stdlib.area.direction')
+local Position = require('stdlib.area.position')
 local table = require('stdlib.utils.table')
 
 ---@type ISSupportedEntities
@@ -24,7 +25,7 @@ local InventorySensor = {}
 ---@param entity LuaEntity?
 ---@return ISDataController?
 local function locate_scan_controller(entity)
-    if not Is.Valid(entity) then return nil end
+    if not (entity and entity.valid) then return nil end
 
     assert(entity)
     local scan_controller = is_entities.supported_entities[entity.type] and
@@ -42,13 +43,13 @@ end
 -- configure
 --------------------------------------------------------------------------------
 
----@param self InventorySensorData
----@param config InventorySensorConfig?
-function InventorySensor:reconfigure(config)
+---@param is_data inventory_sensor.Data
+---@param config inventory_sensor.Config?
+function InventorySensor.reconfigure(is_data, config)
     if not config then return end
 
-    self.config.enabled = config.enabled
-    self.config.read_grid = config.read_grid
+    is_data.config.enabled = config.enabled
+    is_data.config.read_grid = config.read_grid
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -66,8 +67,9 @@ end
 
 ---@param sensor_entity LuaEntity
 ---@param tags Tags?
----@return InventorySensorData
+---@return inventory_sensor.Data
 function InventorySensor.new(sensor_entity, tags)
+    ---@type inventory_sensor.Data
     local data = {
         sensor_entity = sensor_entity,
         inventories = {},
@@ -78,98 +80,89 @@ function InventorySensor.new(sensor_entity, tags)
         },
     }
 
-    InventorySensor.enhance(data)
-
     if tags then
-        data:reconfigure(tags.is_config)
+        InventorySensor.reconfigure(data, tags.is_config --[[@as inventory_sensor.Config? ]])
     end
 
-    return data --[[@as InventorySensorData ]]
+    return data
 end
 
---- Add the meta methods to the data object. *MUST* be called every time the
---- object is retrieved from storage.
----@param is_data InventorySensorData
-function InventorySensor.enhance(is_data)
+---@param is_data inventory_sensor.Data
+function InventorySensor.destroy(is_data)
     if not is_data then return end
-    -- dispatch to methods in InventorySensor. This needs to be done through a metatable
-    -- as the game does not allow functions directly on data that is put into storage.
-    setmetatable(is_data, { __index = InventorySensor })
+    is_data.sensor_entity = nil -- don't destroy; lifecycle is managed by the game and destroying prevents ghosts from showing
 end
 
----@param self InventorySensorData
-function InventorySensor:destroy()
-    self.sensor_entity = nil -- don't destroy; lifecycle is managed by the game and destroying prevents ghosts from showing
-end
-
----@param self InventorySensorData
+---@param is_data inventory_sensor.Data
 ---@param unit_number integer
-function InventorySensor:validate(unit_number)
-    return Is.Valid(self.sensor_entity) and self.sensor_entity.unit_number == unit_number
+function InventorySensor.validate(is_data, unit_number)
+    return is_data.sensor_entity and is_data.sensor_entity.valid and is_data.sensor_entity.unit_number == unit_number
 end
 
 ----------------------------------------------------------------------------------------------------
 -- scan
 ----------------------------------------------------------------------------------------------------
 
----@param self InventorySensorData
+---@param entity LuaEntity
+---@return boolean
+local function is_horizontal(entity)
+    return entity.direction == defines.direction.west or entity.direction == defines.direction.east
+end
+
+---@param is_data inventory_sensor.Data
 ---@return BoundingBox scan_area
-function InventorySensor:create_scan_area()
+function InventorySensor.create_scan_area(is_data)
+    assert(is_data.sensor_entity)
+
     local scan_offset = Framework.settings:runtime_setting(const.settings_scan_offset_name)
     local scan_range = Framework.settings:runtime_setting(const.settings_scan_range_name)
 
-    local entity = self.sensor_entity
+    local entity = is_data.sensor_entity
+    local position = Position(entity.position)
+    local area = Area.new { position + { -0.5, -scan_offset }, position + { 0.5, scan_offset } }
+    area = is_horizontal(entity) and area or area:flip()
+    area = area:translate(Direction.opposite(entity.direction), scan_range - 0.5)
 
-    local scan_area = Area.new(const.normalized_area[entity.direction])
-    assert(scan_area)
-
-    if entity.direction == defines.direction.west or entity.direction == defines.direction.east then
-        scan_area = scan_area * Area.new { left_top = { scan_range, scan_offset }, right_bottom = { scan_range, scan_offset } }
-    else
-        scan_area = scan_area * Area.new { left_top = { scan_offset, scan_range }, right_bottom = { scan_offset, scan_range } }
-    end
-
-    scan_area = scan_area:offset(entity.position)
-    return scan_area:normalize()
+    return area
 end
 
----@param self InventorySensorData
+---@param is_data inventory_sensor.Data
 ---@param force boolean?
 ---@return boolean scanned True if scan happened
-function InventorySensor:scan(force)
-    if self.config.enabled then
-        local interval = self.scan_interval or Framework.settings:runtime_setting(const.settings_find_entity_interval_name)
+function InventorySensor.scan(is_data, force)
+    if is_data.config.enabled then
+        local interval = is_data.scan_interval or Framework.settings:runtime_setting(const.settings_find_entity_interval_name)
 
-        local scan_time = self.scan_time or 0
+        local scan_time = is_data.scan_time or 0
         if not (force or (game.tick - scan_time >= interval)) then return false end
 
-        self.scan_time = game.tick
+        is_data.scan_time = game.tick
 
         -- if force is set, always create the scan area, otherwise, if a scan area
         -- already exists, use that
-        self.scan_area = (not force) and self.scan_area or self:create_scan_area()
+        is_data.scan_area = (not force) and is_data.scan_area or InventorySensor.create_scan_area(is_data)
 
         if Framework.settings:runtime_setting('debug_mode') then
             rendering.draw_rectangle {
                 color = { r = 0.5, g = 0.5, b = 1 },
-                surface = self.sensor_entity.surface,
-                left_top = self.scan_area.left_top,
-                right_bottom = self.scan_area.right_bottom,
+                surface = is_data.sensor_entity.surface,
+                left_top = is_data.scan_area.left_top,
+                right_bottom = is_data.scan_area.right_bottom,
                 time_to_live = 10,
             }
         end
 
-        local entities = self.sensor_entity.surface.find_entities(self.scan_area)
+        local entities = is_data.sensor_entity.surface.find_entities(is_data.scan_area)
 
         for _, entity in pairs(entities) do
-            if self:connect(entity) then
+            if InventorySensor.connect(is_data, entity) then
                 return true
             end
         end
     end
 
     -- not connected
-    self:disconnect()
+    InventorySensor.disconnect(is_data)
 
     return true
 end
@@ -178,11 +171,13 @@ end
 -- load/clear
 ----------------------------------------------------------------------------------------------------
 
----@param self InventorySensorData
+---@param is_data inventory_sensor.Data
 ---@return LuaConstantCombinatorControlBehavior
-function InventorySensor:clear()
+function InventorySensor.clear(is_data)
     -- empty the signals sections
-    local control = self.sensor_entity.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior ]]
+
+    local control = is_data.sensor_entity.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior ]]
+    assert(control)
 
     for i = 1, control.sections_count, 1 do
         control.remove_section(i)
@@ -192,19 +187,21 @@ function InventorySensor:clear()
 end
 
 --- Loads the state of the connected entity into the sensor.
----@param self InventorySensorData
+---@param is_data inventory_sensor.Data
 ---@param force boolean?
 ---@return boolean entity was loaded
-function InventorySensor:load(force)
-    local load_time = self.load_time or 0
+function InventorySensor.load(is_data, force)
+    local load_time = is_data.load_time or 0
     if not (force or (game.tick - load_time >= Framework.settings:runtime_setting(const.settings_update_interval_name))) then return false end
-    self.load_time = game.tick
+    is_data.load_time = game.tick
 
-    local control = self:clear()
+    local control = InventorySensor.clear(is_data)
 
-    if not self.config.enabled then return false end
-    if not Is.Valid(self.scan_entity) then return false end
-    local scan_controller = locate_scan_controller(self.scan_entity)
+    if not is_data.config.enabled then return false end
+    local scan_entity = is_data.scan_entity
+    if not (scan_entity and scan_entity.valid) then return false end
+
+    local scan_controller = locate_scan_controller(scan_entity)
     if not scan_controller then return false end
 
     ---@type integer
@@ -238,13 +235,13 @@ function InventorySensor:load(force)
         end
     end
 
-    local burner = self.scan_entity.burner
+    local burner = scan_entity.burner
     local remaining_fuel = 0
 
     -- load inventories for the entity
-    if table_size(self.inventories) > 0 then
-        for inventory in pairs(self.inventories) do
-            local inventory_items = self.scan_entity.get_inventory(inventory)
+    if table_size(is_data.inventories) > 0 then
+        for inventory in pairs(is_data.inventories) do
+            local inventory_items = scan_entity.get_inventory(inventory)
             if inventory_items then
                 for _, item in pairs(inventory_items.get_contents()) do
                     sink { value = { name = item.name, type = 'item', quality = item.quality or 'normal' }, min = item.count }
@@ -261,8 +258,8 @@ function InventorySensor:load(force)
     end
 
     -- get fluids
-    for i = 1, self.scan_entity.fluids_count, 1 do
-        local fluid = self.scan_entity.get_fluid(i)
+    for i = 1, scan_entity.fluids_count, 1 do
+        local fluid = scan_entity.get_fluid(i)
         if fluid then
             sink { value = { type = 'fluid', name = fluid.name, quality = 'normal' }, min = math.ceil(fluid.amount) }
         end
@@ -278,10 +275,10 @@ function InventorySensor:load(force)
 
     -- add custom items
     if scan_controller.contribute then
-        scan_controller.contribute(self, sink)
+        scan_controller.contribute(is_data, sink)
     end
 
-    local temperature = self.scan_entity.temperature
+    local temperature = scan_entity.temperature
     if temperature then
         sink { value = const.signals.temperature_signal, min = temperature }
     end
@@ -297,9 +294,9 @@ function InventorySensor:load(force)
     if Framework.settings:runtime_setting('debug_mode') then
         rendering.draw_rectangle {
             color = { r = 1, g = 1, b = 0.3 },
-            surface = self.sensor_entity.surface,
-            left_top = self.sensor_entity.bounding_box.left_top,
-            right_bottom = self.sensor_entity.bounding_box.right_bottom,
+            surface = is_data.sensor_entity.surface,
+            left_top = is_data.sensor_entity.bounding_box.left_top,
+            right_bottom = is_data.sensor_entity.bounding_box.right_bottom,
             time_to_live = 2,
         }
     end
@@ -311,37 +308,37 @@ end
 -- connect/disconnect
 ----------------------------------------------------------------------------------------------------
 
----@param self InventorySensorData
+---@param is_data inventory_sensor.Data
 ---@param entity LuaEntity
 ---@return boolean connected
-function InventorySensor:connect(entity)
-    if not Is.Valid(entity) then return false end
+function InventorySensor.connect(is_data, entity)
+    if not (entity and entity.valid) then return false end
     if is_entities.blacklist[entity.name] then return false end
 
     local scan_controller = locate_scan_controller(entity)
     if not scan_controller then return false end
 
     -- reconnect to the same entity
-    if self.scan_entity and self.scan_entity.unit_number == entity.unit_number then return true end
+    if is_data.scan_entity and is_data.scan_entity.unit_number == entity.unit_number then return true end
 
-    self.scan_entity = entity
-    self.scan_interval = scan_controller.interval or scan_frequency.stationary -- unset scan interval -> stationary
-    self.inventories = table.array_to_dictionary(scan_controller.inventories or {}, true)
-    self.config.scan_entity_id = entity.unit_number
+    is_data.scan_entity = entity
+    is_data.scan_interval = scan_controller.interval or scan_frequency.stationary -- unset scan interval -> stationary
+    is_data.inventories = table.array_to_dictionary(scan_controller.inventories or {}, true)
+    is_data.config.scan_entity_id = entity.unit_number
 
     -- burners also look at fuel
     if entity.burner then
-        self.inventories[defines.inventory.fuel] = true
+        is_data.inventories[defines.inventory.fuel] = true
     end
 
-    self:load(true)
+    InventorySensor.load(is_data, true)
 
     if Framework.settings:runtime_setting('debug_mode') then
         rendering.draw_rectangle {
             color = { r = 0.3, g = 1, b = 0.3 },
-            surface = self.sensor_entity.surface,
-            left_top = self.scan_area.left_top,
-            right_bottom = self.scan_area.right_bottom,
+            surface = is_data.sensor_entity.surface,
+            left_top = is_data.scan_area.left_top,
+            right_bottom = is_data.scan_area.right_bottom,
             time_to_live = 10,
         }
     end
@@ -349,27 +346,27 @@ function InventorySensor:connect(entity)
     return true
 end
 
----@param self InventorySensorData
-function InventorySensor:disconnect()
-    if not self.scan_entity then return end
+---@param is_data inventory_sensor.Data
+function InventorySensor.disconnect(is_data)
+    if not is_data.scan_entity then return end
 
-    self.scan_entity = nil
-    self.scan_interval = nil
-    self.inventories = {}
-    self.scan_time = nil
-    self.load_time = nil
+    is_data.scan_entity = nil
+    is_data.scan_interval = nil
+    is_data.inventories = {}
+    is_data.scan_time = nil
+    is_data.load_time = nil
 
-    self.config.scan_entity_id = nil
-    self.config.status = nil
+    is_data.config.scan_entity_id = nil
+    is_data.config.status = nil
 
-    self:clear()
+    InventorySensor.clear(is_data)
 
     if Framework.settings:runtime_setting('debug_mode') then
         rendering.draw_rectangle {
             color = { r = 1, g = 0.3, b = 0.3 },
-            surface = self.sensor_entity.surface,
-            left_top = self.scan_area.left_top,
-            right_bottom = self.scan_area.right_bottom,
+            surface = is_data.sensor_entity.surface,
+            left_top = is_data.scan_area.left_top,
+            right_bottom = is_data.scan_area.right_bottom,
             time_to_live = 10,
         }
     end
@@ -379,19 +376,18 @@ end
 -- ticker
 ----------------------------------------------------------------------------------------------------
 
----@param self InventorySensorData
+---@param is_data inventory_sensor.Data
 ---@return boolean if entity was either scanned or loaded
-function InventorySensor:tick()
-    if not Is.Valid(self.sensor_entity) then
-        self.config.enabled = false
-        self.config.status = defines.entity_status.marked_for_deconstruction
+function InventorySensor.tick(is_data)
+    if not (is_data.sensor_entity and is_data.sensor_entity.valid) then
+        is_data.config.enabled = false
+        is_data.config.status = defines.entity_status.marked_for_deconstruction
         return false
     else
-        local old_status = self.config.status
-        self.config.status = self.sensor_entity.status
+        is_data.config.status = is_data.sensor_entity.status
 
-        local scanned = self:scan()
-        local loaded = self:load()
+        local scanned = InventorySensor.scan(is_data)
+        local loaded = InventorySensor.load(is_data)
         return scanned or loaded
     end
 end

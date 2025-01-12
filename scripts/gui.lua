@@ -5,6 +5,7 @@
 
 local Event = require('stdlib.event.event')
 local Player = require('stdlib.event.player')
+local Is = require('stdlib.utils.is')
 local table = require('stdlib.utils.table')
 
 local tools = require('framework.tools')
@@ -18,9 +19,9 @@ local Gui = {}
 -- UI definition
 ----------------------------------------------------------------------------------------------------
 
----@param is_entity InventorySensorData
+---@param is_data inventory_sensor.Data
 ---@return framework.gui.element_definition ui
-function Gui.getUi(is_entity)
+function Gui.getUi(is_data)
     return {
         type = 'frame',
         name = 'gui_root',
@@ -56,10 +57,10 @@ function Gui.getUi(is_entity)
                     },
                 },
             }, -- Title Bar End
-            { -- Body
+            {  -- Body
                 type = 'frame',
                 style = 'entity_frame',
-                style_mods = { width = 400, },
+                style_mods = { width = 424, },
                 children = {
                     {
                         type = 'flow',
@@ -115,7 +116,7 @@ function Gui.getUi(is_entity)
                                     {
                                         type = 'label',
                                         style = 'label',
-                                        caption = 'ID: ' .. is_entity.sensor_entity.unit_number,
+                                        caption = 'ID: ' .. is_data.sensor_entity.unit_number,
                                     },
                                 },
                             },
@@ -128,7 +129,7 @@ function Gui.getUi(is_entity)
                                         type = 'entity-preview',
                                         name = 'preview',
                                         style = 'wide_entity_button',
-                                        elem_mods = { entity = is_entity.sensor_entity },
+                                        elem_mods = { entity = is_data.sensor_entity },
                                     },
                                 },
                             },
@@ -173,7 +174,7 @@ function Gui.getUi(is_entity)
                             },
                             {
                                 type = 'scroll-pane',
-                                style = 'logistic_sections_scroll_pane',
+                                style = 'deep_slots_scroll_pane',
                                 direction = 'vertical',
                                 name = 'signal-view-pane',
                                 visible = false,
@@ -207,9 +208,9 @@ end
 ----------------------------------------------------------------------------------------------------
 
 ---@param gui framework.gui
----@param is_entity InventorySensorData?
-function Gui.render_preview(gui, is_entity)
-    if not is_entity then return end
+---@param is_data inventory_sensor.Data?
+function Gui.render_preview(gui, is_data)
+    if not is_data then return end
 
     local signal_view = gui:find_element('signal-view')
     assert(signal_view)
@@ -218,47 +219,50 @@ function Gui.render_preview(gui, is_entity)
 
     for _, c in pairs(signal_view.children) do c.destroy() end
 
-    local control = is_entity.sensor_entity.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior ]]
+    local control = is_data.sensor_entity.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior ]]
 
-    if is_entity.config.enabled and control.sections_count > 0 and control.sections[1].filters_count > 0 then
+    if is_data.config.enabled and control.sections_count > 0 and control.sections[1].filters_count > 0 then
         signal_view_pane.visible = true
-        for _, filter in pairs(control.sections[1].filters) do
-            -- item -> item
-            -- fluid -> fluid
-            -- virtual -> virtual_signal
-            -- <absent> -> item
-            local signal_type = (filter.value.type == 'virtual' and 'virtual_signal') or filter.value.type or 'item'
-            local signal_name = filter.value.name
-            local sprite_type = (signal_type == 'virtual_signal' and 'virtual-signal') or signal_type
 
-            local button = {
-                type = 'sprite-button',
-                sprite = sprite_type .. '/' .. signal_name,
-                number = filter.min,
-                style = 'compact_slot', -- 'slot_button',
-                tooltip = prototypes[signal_type][signal_name].localised_name,
-            }
+        for section_count = 1, control.sections_count, 1 do
+            for _, filter in pairs(control.sections[section_count].filters) do
+                -- item -> item
+                -- fluid -> fluid
+                -- virtual -> virtual_signal
+                -- <absent> -> item
+                local signal_type = (filter.value.type == 'virtual' and 'virtual_signal') or filter.value.type or 'item'
+                local signal_name = filter.value.name
+                local sprite_type = (signal_type == 'virtual_signal' and 'virtual-signal') or signal_type
 
-            if signal_type == 'item' then
-                button.elem_tooltip = {
-                    type = 'item-with-quality',
-                    name = signal_name,
-                    quality = filter.value.quality,
+                local button = {
+                    type = 'sprite-button',
+                    sprite = sprite_type .. '/' .. signal_name,
+                    number = filter.min,
+                    style = 'compact_slot', -- 'slot_button',
+                    tooltip = prototypes[signal_type][signal_name].localised_name,
                 }
-            elseif signal_type == 'virtual_signal' then
-                button.elem_tooltip = {
-                    type = 'signal',
-                    signal_type = 'virtual', -- see https://forums.factorio.com/viewtopic.php?f=7&t=123237
-                    name = signal_name,
-                }
-            else
-                button.elem_tooltip = {
-                    type = signal_type,
-                    name = signal_name,
-                }
+
+                if signal_type == 'item' then
+                    button.elem_tooltip = {
+                        type = 'item-with-quality',
+                        name = signal_name,
+                        quality = filter.value.quality,
+                    }
+                elseif signal_type == 'virtual_signal' then
+                    button.elem_tooltip = {
+                        type = 'signal',
+                        signal_type = 'virtual', -- see https://forums.factorio.com/viewtopic.php?f=7&t=123237
+                        name = signal_name,
+                    }
+                else
+                    button.elem_tooltip = {
+                        type = signal_type,
+                        name = signal_name,
+                    }
+                end
+
+                signal_view.add(button)
             end
-
-            signal_view.add(button)
         end
     else
         signal_view_pane.visible = false
@@ -270,11 +274,11 @@ end
 ----------------------------------------------------------------------------------------------------
 
 ---@param event EventData.on_gui_switch_state_changed|EventData.on_gui_checked_state_changed|EventData.on_gui_elem_changed
----@return InventorySensorData? is_entity
+---@return inventory_sensor.Data? is_data
 local function locate_entity(event)
     local gui = Framework.gui_manager:find_gui(event.player_index)
     if not gui then return end
-    return This.SensorController:entity(gui.entity_id) --[[@as InventorySensorData? ]]
+    return This.SensorController:entity(gui.entity_id)
 end
 
 --- close the UI (button or shortcut key)
@@ -295,17 +299,17 @@ local values_on_off = table.invert(on_off_values)
 ---
 ---@param event EventData.on_gui_switch_state_changed
 function Gui.onSwitchEnabled(event)
-    local is_entity = locate_entity(event)
-    if not is_entity then return end
+    local is_data = locate_entity(event)
+    if not is_data then return end
 
-    is_entity.config.enabled = on_off_values[event.element.switch_state]
+    is_data.config.enabled = on_off_values[event.element.switch_state]
 end
 
 function Gui.onToggleGridRead(event)
-    local is_entity = locate_entity(event)
-    if not is_entity then return end
+    local is_data = locate_entity(event)
+    if not is_data then return end
 
-    is_entity.config.read_grid = event.element.state
+    is_data.config.read_grid = event.element.state
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -313,11 +317,11 @@ end
 ----------------------------------------------------------------------------------------------------
 
 ---@param gui framework.gui
----@param is_entity InventorySensorData
-local function update_config_gui_state(gui, is_entity)
-    local entity_status = (not is_entity.config.enabled) and defines.entity_status.disabled -- if not enabled, status is disabled
-        or is_entity.config.status                                                          -- if enabled, the registered state takes precedence if present
-        or defines.entity_status.working                                                    -- otherwise, it is working
+---@param is_data inventory_sensor.Data
+local function update_config_gui_state(gui, is_data)
+    local entity_status = (not is_data.config.enabled) and defines.entity_status.disabled -- if not enabled, status is disabled
+        or is_data.config.status                                                          -- if enabled, the registered state takes precedence if present
+        or defines.entity_status.working                                                  -- otherwise, it is working
 
     local lamp = gui:find_element('lamp')
     lamp.sprite = tools.STATUS_SPRITES[entity_status]
@@ -326,12 +330,12 @@ local function update_config_gui_state(gui, is_entity)
     status.caption = { tools.STATUS_NAMES[entity_status] }
 
     local read_grid = gui:find_element('read-grid')
-    read_grid.state = is_entity.config.read_grid or false
+    read_grid.state = is_data.config.read_grid or false
 
     local inv_status = gui:find_element('inv-status')
-    if is_entity.config.enabled then
-        if is_entity.scan_entity then
-            inv_status.caption = { const:locale('reading'), is_entity.scan_entity.localised_name }
+    if is_data.config.enabled then
+        if Is.Valid(is_data.scan_entity) then
+            inv_status.caption = { const:locale('reading'), is_data.scan_entity.localised_name }
         else
             inv_status.caption = { const:locale('scanning') }
         end
@@ -339,20 +343,20 @@ local function update_config_gui_state(gui, is_entity)
         inv_status.caption = { const:locale('disabled') }
     end
 
-    local enabled = is_entity.config.enabled
+    local enabled = is_data.config.enabled
     local on_off = gui:find_element('on-off')
     on_off.switch_state = values_on_off[enabled]
 end
 
 ---@param gui framework.gui
----@param is_entity InventorySensorData
-local function update_gui_state(gui, is_entity)
-    Gui.render_preview(gui, is_entity)
+---@param is_data inventory_sensor.Data
+local function update_gui_state(gui, is_data)
+    Gui.render_preview(gui, is_data)
 
     local connections = gui:find_element('connections')
     connections.caption = { 'gui-control-behavior.not-connected' }
     for _, color in pairs { 'red', 'green' } do
-        local wire_connector = is_entity.sensor_entity.get_wire_connector(defines.wire_connector_id['circuit_' .. color], false)
+        local wire_connector = is_data.sensor_entity.get_wire_connector(defines.wire_connector_id['circuit_' .. color], false)
 
         local wire_connection = gui:find_element('connection-' .. color)
         if wire_connector and wire_connector.connection_count > 0 then
@@ -373,19 +377,19 @@ end
 ---@param gui framework.gui
 ---@return boolean
 function Gui.guiUpdater(gui)
-    local is_entity = This.SensorController:entity(gui.entity_id) --[[@as InventorySensorData ]]
-    if not is_entity then return false end
+    local is_data = This.SensorController:entity(gui.entity_id)
+    if not is_data then return false end
 
     ---@type InventorySensorGuiContext
     local context = gui.context
 
-    if not (context.last_config and table.compare(context.last_config, is_entity.config)) then
-        update_config_gui_state(gui, is_entity)
-        context.last_config = tools.copy(is_entity.config)
+    if not (context.last_config and table.compare(context.last_config, is_data.config)) then
+        update_config_gui_state(gui, is_data)
+        context.last_config = tools.copy(is_data.config)
     end
 
     -- always update wire state and preview
-    update_gui_state(gui, is_entity)
+    update_gui_state(gui, is_data)
 
     return true
 end
@@ -396,8 +400,8 @@ end
 
 ---@param event EventData.on_gui_opened
 function Gui.onGuiOpened(event)
-    local player, player_data = Player.get(event.player_index)
-    if not (player and player_data) then return end
+    local player = Player.get(event.player_index)
+    if not player then return end
 
     -- close an eventually open gui
     Framework.gui_manager:destroy_gui(event.player_index)
@@ -409,9 +413,9 @@ function Gui.onGuiOpened(event)
     end
 
     assert(entity.unit_number)
-    local is_entity = This.SensorController:entity(entity.unit_number) --[[@as InventorySensorData ]]
+    local is_data = This.SensorController:entity(entity.unit_number)
 
-    if not is_entity then
+    if not is_data then
         log('Data missing for ' ..
             event.entity.name .. ' on ' .. event.entity.surface.name .. ' at ' .. serpent.line(event.entity.position) .. ' refusing to display UI')
         player.opened = nil
@@ -419,7 +423,7 @@ function Gui.onGuiOpened(event)
     end
 
     ---@class InventorySensorGuiContext
-    ---@field last_config InventorySensorData?
+    ---@field last_config inventory_sensor.Data?
     local gui_state = {
         last_config = nil,
     }
@@ -427,7 +431,7 @@ function Gui.onGuiOpened(event)
     local gui = Framework.gui_manager:create_gui {
         player_index = event.player_index,
         parent = player.gui.screen,
-        ui_tree = Gui.getUi(is_entity),
+        ui_tree = Gui.getUi(is_data),
         context = gui_state,
         update_callback = Gui.guiUpdater,
         entity_id = entity.unit_number
@@ -437,8 +441,8 @@ function Gui.onGuiOpened(event)
 end
 
 function Gui.onGhostGuiOpened(event)
-    local player, player_data = Player.get(event.player_index)
-    if not (player and player_data) then return end
+    local player = Player.get(event.player_index)
+    if not player then return end
 
     player.opened = nil
 end

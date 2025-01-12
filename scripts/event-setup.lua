@@ -101,7 +101,7 @@ local function onEntitySettingsPasted(event)
 
     if not (src_entity and dst_entity) then return end
 
-    dst_entity:reconfigure(src_entity.config)
+    Sensor.reconfigure(dst_entity, src_entity.config)
 end
 
 --------------------------------------------------------------------------------
@@ -164,7 +164,9 @@ local function onConfigurationChanged(changed)
                     end
                 end
 
-                game.print(('Replaced %d inventory sensors successfully on %s, %d sensors could not be replaced'):format(success, surface.name, failure))
+                if success + failure > 0 then
+                    game.print(('Replaced %d inventory sensors successfully on %s, %d sensors could not be replaced'):format(success, surface.name, failure))
+                end
             end
         else
             game.print('Old Inventory Sensor mod not installed or version < 2.0.3. Can not migrate sensors!')
@@ -173,7 +175,7 @@ local function onConfigurationChanged(changed)
 
     -- disconnect all entities, have them reconnect; this resets the config state of all entities
     for _, entity in pairs(This.SensorController:entities()) do
-        entity:disconnect()
+        Sensor.disconnect(entity)
     end
 end
 
@@ -191,19 +193,28 @@ local function onTick()
     if table_size(entities) == 0 then
         index = nil
     else
+        local destroy_list = {}
         repeat
             index, entity = next(entities, index)
-            if entity then
-                Sensor.enhance(entity)
-                if Is.Valid(entity.sensor_entity) then
-                    if entity:tick() then
-                        process_count = process_count - 1
-                    end
-                else
-                    This.SensorController:destroy(index)
+            if entity and entity.sensor_entity and entity.sensor_entity.valid then
+                if Sensor.tick(entity) then
+                    process_count = process_count - 1
                 end
+            else
+                table.insert(destroy_list, index)
             end
         until process_count == 0 or not index
+
+        if table_size(destroy_list) then
+            for _, unit_id in pairs(destroy_list) do
+                This.SensorController:destroy(unit_id)
+
+                -- if the last index was destroyed, reset the scan loop index
+                if unit_id == index then
+                    index = nil
+                end
+            end
+        end
     end
     storage.last_tick_entity = index
 end

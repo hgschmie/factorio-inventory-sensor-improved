@@ -5,7 +5,6 @@
 
 local util = require('util')
 local table = require('stdlib.utils.table')
-local Is = require('stdlib.utils.is')
 
 local const = require('lib.constants')
 
@@ -16,7 +15,7 @@ local const = require('lib.constants')
 ---@param entity LuaEntity This must be an entity because we may test during sensor creation
 ---@return boolean
 local function is_stopped(entity)
-    if not Is.Valid(entity) then return false end
+    if not not (entity and entity.valid) then return false end
     return entity.speed == 0 -- entity must be standing still
 end
 
@@ -29,17 +28,17 @@ local valid_train_states = table.array_to_dictionary({
 ---@param entity LuaEntity This must be an entity because we may test during sensor creation
 ---@return boolean
 local function is_train_stopped(entity)
-    if not (Is.Valid(entity) and entity.train) then return false end
+    if not (not (entity and entity.valid) and entity.train) then return false end
     return valid_train_states[entity.train.state] and true or false
 end
 
----@param is_entity InventorySensorData
+---@param is_data inventory_sensor.Data
 ---@param sink fun(filter: LogisticFilter)
-local function read_grid(is_entity, sink)
-    if not is_entity.config.read_grid then return end
-    if not (Is.Valid(is_entity.scan_entity) and is_entity.scan_entity.grid) then return end
+local function read_grid(is_data, sink)
+    if not is_data.config.read_grid then return end
+    if not (is_data.scan_entity and is_data.scan_entity.valid and is_data.scan_entity.grid) then return end
 
-    local grid_equipment = is_entity.scan_entity.grid.equipment
+    local grid_equipment = is_data.scan_entity.grid.equipment
     local items = {}
     for _, equipment in pairs(grid_equipment) do
         local name = equipment.prototype.take_result.name
@@ -53,31 +52,31 @@ local function read_grid(is_entity, sink)
     end
 end
 
----@param is_entity InventorySensorData
+---@param is_data inventory_sensor.Data
 ---@param sink fun(filter: LogisticFilter)
-local function read_crafting_progress(is_entity, sink)
-    if not Is.Valid(is_entity.scan_entity) then return end
-    local progress = is_entity.scan_entity.crafting_progress
+local function read_crafting_progress(is_data, sink)
+    if not (is_data.scan_entity and is_data.scan_entity.valid) then return end
+    local progress = is_data.scan_entity.crafting_progress
     if progress then
         sink { value = const.signals.progress_signal, min = math.floor(progress * 100) }
     end
 end
 
----@param is_entity InventorySensorData
+---@param is_data inventory_sensor.Data
 ---@param sink fun(filter: LogisticFilter)
-local function read_research_progress(is_entity, sink)
-    if not Is.Valid(is_entity.scan_entity) then return end
-    local progress = is_entity.scan_entity.force.research_progress
+local function read_research_progress(is_data, sink)
+    if not (is_data.scan_entity and is_data.scan_entity.valid) then return end
+    local progress = is_data.scan_entity.force.research_progress
     if progress then
         sink { value = const.signals.progress_signal, min = math.floor(progress * 100) }
     end
 end
 
----@param is_entity InventorySensorData
+---@param is_data inventory_sensor.Data
 ---@param sink fun(filter: LogisticFilter)
-local function read_charge(is_entity, sink)
-    local entity = is_entity.scan_entity
-    if not Is.Valid(entity) then return end
+local function read_charge(is_data, sink)
+    local entity = is_data.scan_entity
+    if not not (entity and entity.valid) then return end
     assert(entity)
     sink { value = const.signals.charge_signal, min = math.floor(entity.energy / entity.electric_buffer_size * 100) }
 end
@@ -121,7 +120,7 @@ local train_type = {
 
 local assembler_type = {
     interval = scan_frequency.stationary,
-    inventories =  {
+    inventories = {
         defines.inventory.assembling_machine_input,
         defines.inventory.assembling_machine_output,
         defines.inventory.furnace_source,

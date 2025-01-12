@@ -14,21 +14,21 @@
 ---@class ISDataController
 ---@field interval scan_frequency
 ---@field inventories defines.inventory[]
----@field validate (fun(entity: InventorySensorData): boolean)?
----@field contribute (fun(is_entity: InventorySensorData, sink: fun(filter: LogisticFilter)))?
+---@field validate (fun(entity: inventory_sensor.Data): boolean)?
+---@field contribute (fun(is_data: inventory_sensor.Data, sink: fun(filter: LogisticFilter)))?
 ---@field signals table<string, integer>?
 
----@class InventorySensorConfig
+---@class inventory_sensor.Config
 ---@field enabled boolean
 ---@field status defines.entity_status
 ---@field scan_entity_id integer?
 ---@field read_grid boolean
 
 
----@class InventorySensorData: InventorySensor
+---@class inventory_sensor.Data
 ---@field sensor_entity LuaEntity
 ---@field inventories table<defines.inventory, true>
----@field config InventorySensorConfig
+---@field config inventory_sensor.Config
 ---@field scan_area BoundingBox?
 ---@field scan_entity LuaEntity?
 ---@field scan_interval integer?
@@ -39,8 +39,8 @@
 -- controller.lua
 ----------------------------------------------------------------------------------------------------
 
----@class InvSensorStorage
----@field is InventorySensorData[]
+---@class inventory_sensor.Storage
+---@field is inventory_sensor.Data[]
 ---@field count integer
 ---@field VERSION integer
 
