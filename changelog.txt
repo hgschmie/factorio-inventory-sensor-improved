@@ -1,7 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.1
-Date: ????
-  Changes:
+Date: 2025-01-13
+  Bugfixes:
+    - Fix crash when the scanned entity is deleted or replaced. Reported on the mod discussion (thanks @Hoochie)
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.0
 Date: 2025-01-13

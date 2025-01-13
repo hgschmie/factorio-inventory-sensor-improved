@@ -320,7 +320,7 @@ function InventorySensor.connect(is_data, entity)
     if not scan_controller then return false end
 
     -- reconnect to the same entity
-    if is_data.scan_entity and is_data.scan_entity.unit_number == entity.unit_number then return true end
+    if is_data.scan_entity and is_data.scan_entity.valid and is_data.scan_entity.unit_number == entity.unit_number then return true end
 
     is_data.scan_entity = entity
     is_data.scan_interval = scan_controller.interval or scan_frequency.stationary -- unset scan interval -> stationary
