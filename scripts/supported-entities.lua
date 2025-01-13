@@ -16,7 +16,7 @@ local const = require('lib.constants')
 ---@param entity LuaEntity This must be an entity because we may test during sensor creation
 ---@return boolean
 local function is_stopped(entity)
-    if not not (entity and entity.valid) then return false end
+    if not (entity and entity.valid) then return false end
     return entity.speed == 0 -- entity must be standing still
 end
 
@@ -29,7 +29,7 @@ local valid_train_states = table.array_to_dictionary({
 ---@param entity LuaEntity This must be an entity because we may test during sensor creation
 ---@return boolean
 local function is_train_stopped(entity)
-    if not (not (entity and entity.valid) and entity.train) then return false end
+    if not (entity and entity.valid and entity.train) then return false end
     return valid_train_states[entity.train.state] and true or false
 end
 
@@ -77,7 +77,7 @@ end
 ---@param sink fun(filter: LogisticFilter)
 local function read_charge(is_data, sink)
     local entity = is_data.scan_entity
-    if not not (entity and entity.valid) then return end
+    if not (entity and entity.valid) then return end
     assert(entity)
     sink { value = const.signals.charge_signal, min = math.floor(entity.energy / entity.electric_buffer_size * 100) }
 end
