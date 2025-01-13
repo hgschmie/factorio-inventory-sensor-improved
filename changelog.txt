@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.0
-Date: ????
+Date: 2025-01-13
   Bugfixes:
     - Add more multiplayer related fixes
     - fix cut and paste error in entity detection (trains work again)
