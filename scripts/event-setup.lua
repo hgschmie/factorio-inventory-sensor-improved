@@ -44,20 +44,17 @@ end
 
 ---@param event EventData.on_player_mined_entity | EventData.on_robot_mined_entity | EventData.on_entity_died | EventData.script_raised_destroy
 local function onEntityDeleted(event)
-    local entity = event and event.entity
-    if not entity then return end
+    local entity = event.entity
+    if not (entity and entity.valid) then return end
+    assert(entity.unit_number)
 
-    local unit_number = entity.unit_number
-
-    This.SensorController:destroy(unit_number)
-    Framework.gui_manager:destroy_gui_by_entity_id(unit_number)
+    This.SensorController:destroy(entity.unit_number)
+    Framework.gui_manager:destroy_gui_by_entity_id(entity.unit_number)
 end
 
 ---@param event EventData.on_object_destroyed
 local function onObjectDestroyed(event)
-    -- or a main entity?
-    if not This.SensorController:entity(event.useful_id) then return end
-
+    -- main entity destroyed
     This.SensorController:destroy(event.useful_id)
     Framework.gui_manager:destroy_gui_by_entity_id(event.useful_id)
 end
