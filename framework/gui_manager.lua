@@ -120,6 +120,8 @@ function FrameworkGuiManager:create_gui(map)
     local root = gui:add_child_elements(map.parent, ui_tree, map.existing_elements)
     gui.root = root
 
+    self.gui_update_tick()
+
     return gui
 end
 
@@ -160,7 +162,7 @@ end
 -- Update ticker
 ------------------------------------------------------------------------
 
-local function gui_update_tick()
+function FrameworkGuiManager.gui_update_tick()
     local state = Framework.gui_manager:state()
     if table_size(state.guis) == 0 then return end
 
@@ -192,7 +194,7 @@ local function register_events()
         end
     end
 
-    Event.on_nth_tick(GUI_UPDATE_TICK_INTERVAL, gui_update_tick)
+    Event.on_nth_tick(GUI_UPDATE_TICK_INTERVAL, FrameworkGuiManager.gui_update_tick)
 end
 
 Event.on_init(register_events)
