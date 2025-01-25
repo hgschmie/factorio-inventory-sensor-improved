@@ -6,7 +6,7 @@
 ---@class InventorySensorMod
 ---@field other_mods table<string, string>
 ---@field SensorController InventorySensorController
----@field gui InventorySensorGui?
+---@field Gui InventorySensorGui?
 This = {
     other_mods = {
         PickerDollies = 'picker-dollies',
