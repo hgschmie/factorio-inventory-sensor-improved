@@ -21,14 +21,33 @@ local Gui = {}
 -- UI definition
 ----------------------------------------------------------------------------------------------------
 
----@param is_data inventory_sensor.Data
+--- Provides all the events used by the GUI and their mappings to functions. This must be outside the
+--- GUI definition as it can not be serialized into storage.
+---@return framework.gui_manager.event_definition
+local function get_gui_event_definition()
+    return {
+        events = {
+            onWindowClosed = Gui.onWindowClosed,
+            onSwitchEnabled = Gui.onSwitchEnabled,
+            onToggleGridRead = Gui.onToggleGridRead,
+        },
+        callback = Gui.guiUpdater,
+    }
+end
+
+--- Returns the definition of the GUI. All events must be mapped onto constants from the gui_events array.
+---@param gui framework.gui
+---@param gui_events framework.gui_events
 ---@return framework.gui.element_definition ui
-function Gui.getUi(is_data)
+function Gui.getUi(gui, gui_events)
+    local is_data = This.SensorController:entity(gui.entity_id)
+    assert(is_data)
+
     return {
         type = 'frame',
         name = 'gui_root',
         direction = 'vertical',
-        handler = { [defines.events.on_gui_closed] = Gui.onWindowClosed },
+        handler = { [defines.events.on_gui_closed] = gui_events.onWindowClosed },
         elem_mods = { auto_center = true },
         children = {
             { -- Title Bar
@@ -55,7 +74,7 @@ function Gui.getUi(is_data)
                         hovered_sprite = 'utility/close_black',
                         clicked_sprite = 'utility/close_black',
                         mouse_button_filter = { 'left' },
-                        handler = { [defines.events.on_gui_click] = Gui.onWindowClosed },
+                        handler = { [defines.events.on_gui_click] = gui_events.onWindowClosed },
                     },
                 },
             }, -- Title Bar End
@@ -145,7 +164,7 @@ function Gui.getUi(is_data)
                                 name = 'on-off',
                                 right_label_caption = { 'gui-constant.on' },
                                 left_label_caption = { 'gui-constant.off' },
-                                handler = { [defines.events.on_gui_switch_state_changed] = Gui.onSwitchEnabled },
+                                handler = { [defines.events.on_gui_switch_state_changed] = gui_events.onSwitchEnabled },
                             },
                             {
                                 type = 'flow',
@@ -171,7 +190,7 @@ function Gui.getUi(is_data)
                                 type = 'checkbox',
                                 caption = { const:locale('read-grid') },
                                 name = 'read-grid',
-                                handler = { [defines.events.on_gui_checked_state_changed] = Gui.onToggleGridRead },
+                                handler = { [defines.events.on_gui_checked_state_changed] = gui_events.onToggleGridRead },
                                 state = false,
                             },
                             {
@@ -251,14 +270,6 @@ end
 -- UI Callbacks
 ----------------------------------------------------------------------------------------------------
 
----@param event EventData.on_gui_switch_state_changed|EventData.on_gui_checked_state_changed|EventData.on_gui_elem_changed
----@return inventory_sensor.Data? is_data
-local function locate_entity(event)
-    local gui = Framework.gui_manager:find_gui(event.player_index)
-    if not gui then return end
-    return This.SensorController:entity(gui.entity_id)
-end
-
 --- close the UI (button or shortcut key)
 ---
 ---@param event EventData.on_gui_click|EventData.on_gui_opened
@@ -276,15 +287,20 @@ local values_on_off = table.invert(on_off_values)
 --- Enable / Disable switch
 ---
 ---@param event EventData.on_gui_switch_state_changed
-function Gui.onSwitchEnabled(event)
-    local is_data = locate_entity(event)
+---@param gui framework.gui
+function Gui.onSwitchEnabled(event, gui)
+    local is_data = This.SensorController:entity(gui.entity_id)
     if not is_data then return end
 
     is_data.config.enabled = on_off_values[event.element.switch_state]
 end
 
-function Gui.onToggleGridRead(event)
-    local is_data = locate_entity(event)
+--- Enable / Disable reading grid
+---
+---@param event EventData.on_gui_checked_state_changed
+---@param gui framework.gui
+function Gui.onToggleGridRead(event, gui)
+    local is_data = This.SensorController:entity(gui.entity_id)
     if not is_data then return end
 
     is_data.config.read_grid = event.element.state
@@ -358,7 +374,7 @@ function Gui.guiUpdater(gui)
     local is_data = This.SensorController:entity(gui.entity_id)
     if not is_data then return false end
 
-    ---@type InventorySensorGuiContext
+    ---@type inventory_sensor.GuiContext
     local context = gui.context
 
     if not (context.last_config and table.compare(context.last_config, is_data.config)) then
@@ -400,16 +416,17 @@ function Gui.onGuiOpened(event)
         return
     end
 
-    ---@class InventorySensorGuiContext
-    ---@field last_config inventory_sensor.Data?
+    ---@class inventory_sensor.GuiContext
+    ---@field last_config inventory_sensor.Config?
     local gui_state = {
         last_config = nil,
     }
 
     local gui = Framework.gui_manager:create_gui {
+        type = 'combinator-gui',
         player_index = event.player_index,
         parent = player.gui.screen,
-        ui_tree = Gui.getUi(is_data),
+        ui_tree_provider = Gui.getUi,
         context = gui_state,
         update_callback = Gui.guiUpdater,
         entity_id = entity.unit_number
@@ -429,7 +446,9 @@ end
 -- Event registration
 ----------------------------------------------------------------------------------------------------
 
-local function register_events()
+local function init_gui()
+    Framework.gui_manager:register_gui_type('combinator-gui', get_gui_event_definition())
+
     local match_inventory_sensor = tools.create_event_entity_matcher('name', const.inventory_sensor_name)
     local match_ghost_inventory_sensor = tools.create_event_ghost_entity_matcher('ghost_name', const.inventory_sensor_name)
 
@@ -437,7 +456,7 @@ local function register_events()
     Event.on_event(defines.events.on_gui_opened, Gui.onGhostGuiOpened, match_ghost_inventory_sensor)
 end
 
-Event.on_init(register_events)
-Event.on_load(register_events)
+Event.on_init(init_gui)
+Event.on_load(init_gui)
 
 return Gui
