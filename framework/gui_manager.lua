@@ -85,10 +85,27 @@ function FrameworkGuiManager:find_gui(player_index)
 end
 
 ---@param player_index number
----@parameter gui framework.gui?
+---@parameter gui framework.gui
 function FrameworkGuiManager:set_gui(player_index, gui)
+    assert(gui)
     local state = self:state()
     state.guis[player_index] = gui
+end
+
+---@param player_index number
+---@return framework.gui?
+function FrameworkGuiManager:clear_gui(player_index)
+    local state = self:state()
+    local root = state.guis[player_index]
+    state.guis[player_index] = nil
+
+    return root
+end
+
+---@return table<number, framework.gui>
+function FrameworkGuiManager:all_guis()
+    local state = self:state()
+    return state.guis
 end
 
 ------------------------------------------------------------------------
@@ -115,10 +132,11 @@ function FrameworkGuiManager:create_gui(map)
     gui.entity_id = map.entity_id
 
     self:destroy_gui(player_index)
-    self:set_gui(player_index, gui)
 
     local root = gui:add_child_elements(map.parent, ui_tree, map.existing_elements)
     gui.root = root
+
+    self:set_gui(player_index, gui)
 
     self.gui_update_tick()
 
@@ -154,8 +172,9 @@ function FrameworkGuiManager:destroy_gui(player_index)
     local gui = self:find_gui(player_index)
     if not gui then return end
 
-    self:set_gui(player_index, nil)
     if gui.root then gui.root.destroy() end
+
+    self:clear_gui(player_index)
 end
 
 ------------------------------------------------------------------------
@@ -163,11 +182,11 @@ end
 ------------------------------------------------------------------------
 
 function FrameworkGuiManager.gui_update_tick()
-    local state = Framework.gui_manager:state()
-    if table_size(state.guis) == 0 then return end
+    local guis = FrameworkGuiManager:all_guis()
+    if table_size(guis) == 0 then return end
 
     local destroy_list = {}
-    for gui_id, gui in pairs(state.guis) do
+    for gui_id, gui in pairs(guis) do
         if not gui:update() then
             table.insert(destroy_list, gui_id)
         end
