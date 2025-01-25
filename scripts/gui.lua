@@ -10,6 +10,7 @@ local Is = require('stdlib.utils.is')
 local table = require('stdlib.utils.table')
 
 local tools = require('framework.tools')
+local signal_converter = require('framework.signal_converter')
 
 local const = require('lib.constants')
 
@@ -178,7 +179,7 @@ function Gui.getUi(is_data)
                                 style = 'deep_slots_scroll_pane',
                                 direction = 'vertical',
                                 name = 'signal-view-pane',
-                                visible = false,
+                                visible = true,
                                 vertical_scroll_policy = 'auto-and-reserve-space',
                                 horizontal_scroll_policy = 'never',
                                 style_mods = {
@@ -215,58 +216,34 @@ function Gui.render_preview(gui, is_data)
 
     local signal_view = gui:find_element('signal-view')
     assert(signal_view)
-    local signal_view_pane = gui:find_element('signal-view-pane')
-    assert(signal_view_pane)
 
-    for _, c in pairs(signal_view.children) do c.destroy() end
+    signal_view.clear()
 
     local control = is_data.sensor_entity.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior ]]
+    assert(control)
 
-    if is_data.config.enabled and control.sections_count > 0 and control.sections[1].filters_count > 0 then
-        signal_view_pane.visible = true
+    if not (is_data.config.enabled and control.sections_count > 0 and control.sections[1].filters_count > 0) then return end
 
-        for section_count = 1, control.sections_count, 1 do
-            for _, filter in pairs(control.sections[section_count].filters) do
-                -- item -> item
-                -- fluid -> fluid
-                -- virtual -> virtual_signal
-                -- <absent> -> item
-                local signal_type = (filter.value.type == 'virtual' and 'virtual_signal') or filter.value.type or 'item'
-                local signal_name = filter.value.name
-                local sprite_type = (signal_type == 'virtual_signal' and 'virtual-signal') or signal_type
-
-                local button = {
-                    type = 'sprite-button',
-                    sprite = sprite_type .. '/' .. signal_name,
-                    number = filter.min,
-                    style = 'compact_slot',
-                    tooltip = prototypes[signal_type][signal_name].localised_name,
+    local count = 0
+    for section_count = 1, control.sections_count, 1 do
+        for _, filter in pairs(control.sections[section_count].filters) do
+            count = count + 1
+            local button = signal_view.add {
+                type = 'sprite-button',
+                style = 'compact_slot',
+                number = filter.min,
+                sprite = signal_converter:logistic_filter_to_sprite_name(filter),
+                tooltip = signal_converter:logistic_filter_to_prototype(filter).localised_name,
+                elem_tooltip = signal_converter:logistic_filter_to_elem_id(filter),
+            }
+            if filter.value.quality and filter.value.quality ~= 'normal' then
+                button.add {
+                    type = 'sprite',
+                    style = 'framework_quality',
+                    sprite = 'quality/' .. filter.value.quality,
                 }
-
-                if signal_type == 'item' then
-                    button.elem_tooltip = {
-                        type = 'item-with-quality',
-                        name = signal_name,
-                        quality = filter.value.quality,
-                    }
-                elseif signal_type == 'virtual_signal' then
-                    button.elem_tooltip = {
-                        type = 'signal',
-                        signal_type = 'virtual', -- see https://forums.factorio.com/viewtopic.php?f=7&t=123237
-                        name = signal_name,
-                    }
-                else
-                    button.elem_tooltip = {
-                        type = signal_type,
-                        name = signal_name,
-                    }
-                end
-
-                signal_view.add(button)
             end
         end
-    else
-        signal_view_pane.visible = false
     end
 end
 
