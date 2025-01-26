@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.3.0
-Date: ????
+Date: 2025-01-26
   Changes:
     - Display quality for items correctly in the preview
     - Fix a bug where autosaving with an open GUI threw an error.
