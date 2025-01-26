@@ -37,9 +37,10 @@ end
 
 --- Returns the definition of the GUI. All events must be mapped onto constants from the gui_events array.
 ---@param gui framework.gui
----@param gui_events framework.gui_events
 ---@return framework.gui.element_definition ui
-function Gui.getUi(gui, gui_events)
+function Gui.getUi(gui)
+    local gui_events = gui.gui_events
+
     local is_data = This.SensorController:entity(gui.entity_id)
     assert(is_data)
 
