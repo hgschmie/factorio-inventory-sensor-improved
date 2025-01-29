@@ -108,4 +108,25 @@ function SignalConverter:logistic_filter_to_elem_id(filter)
     return result
 end
 
+---@param signal Signal
+---@return LogisticFilter
+function SignalConverter:signal_to_logistic_filter(signal)
+
+    local type = signal.signal.type or 'item'
+    local quality = signal.signal.quality or 'normal'
+
+    ---@type LogisticFilter
+    local filter = {
+        value = {
+            type = type,
+            name = signal.signal.name,
+            quality = quality,
+        },
+        min = signal.count,
+    }
+
+    return filter
+end
+
+
 return SignalConverter
