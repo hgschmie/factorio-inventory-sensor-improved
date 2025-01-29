@@ -14,6 +14,7 @@ local tools = require('framework.tools')
 local const = require('lib.constants')
 
 local Sensor = require('scripts.sensor')
+local migration = require('scripts.migration')
 
 --------------------------------------------------------------------------------
 -- entity create / delete
@@ -120,47 +121,15 @@ local function onConfigurationChanged(changed)
     end
 
     if Framework.settings:startup_setting(const.settings_update_inventory_sensors_name) then
-        local inv_sensor = script.active_mods['Inventory Sensor']
-        if inv_sensor then
-            if Version(inv_sensor) >= Version('2.0.3') then
-                for _, surface in pairs(game.surfaces) do
-                    local entities_to_replace = surface.find_entities_filtered {
-                        type = 'constant-combinator',
-                        name = 'item-sensor'
-                    }
+        assert(migration)
 
-                    local success, failure = 0, 0
+        migration:migrateSensors()
+        migration:migrateBlueprints()
 
-                    for _, entity_to_replace in pairs(entities_to_replace) do
-                        local main_entity = surface.create_entity {
-                            name = prototypes.entity[const.inventory_sensor_name],
-                            position = entity_to_replace.position,
-                            direction = entity_to_replace.direction,
-                            force = entity_to_replace.force,
-                            fast_replace = true,
-                        }
-                        if main_entity then
-                            success = success + 1
-                            assert(not entity_to_replace.valid)
-                            This.SensorController:create(main_entity)
-                        else
-                            failure = failure + 1
-                        end
-                    end
-
-                    if success + failure > 0 then
-                        game.print(('Replaced %d inventory sensors successfully on %s, %d sensors could not be replaced'):format(success, surface.name, failure))
-                    end
-                end
-            else
-                game.print('Old Inventory Sensor version < 2.0.3. Can not migrate sensors!')
-            end
+        -- disconnect all entities, have them reconnect; this resets the config state of all entities
+        for _, entity in pairs(This.SensorController:entities()) do
+            Sensor.disconnect(entity)
         end
-    end
-
-    -- disconnect all entities, have them reconnect; this resets the config state of all entities
-    for _, entity in pairs(This.SensorController:entities()) do
-        Sensor.disconnect(entity)
     end
 end
 
@@ -213,7 +182,6 @@ local function register_events()
 
     -- Configuration changes (runtime and startup)
     Event.on_configuration_changed(onConfigurationChanged)
-    Event.register(defines.events.on_runtime_mod_setting_changed, onConfigurationChanged)
 
     Event.register(defines.events.on_tick, onTick)
 

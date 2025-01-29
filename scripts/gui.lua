@@ -429,7 +429,6 @@ function Gui.onGuiOpened(event)
         parent = player.gui.screen,
         ui_tree_provider = Gui.getUi,
         context = gui_state,
-        update_callback = Gui.guiUpdater,
         entity_id = entity.unit_number
     }
 
