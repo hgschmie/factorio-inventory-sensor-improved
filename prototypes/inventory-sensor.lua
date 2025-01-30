@@ -8,8 +8,6 @@ local table = require('stdlib.utils.table')
 
 local const = require('lib.constants')
 
-require('__base__.prototypes.entity.entities')
-
 local item_prototype = {
     name = const.inventory_sensor_name,
     icon = const:png('icon/inventory-sensor'),
