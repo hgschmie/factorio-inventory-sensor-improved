@@ -6,6 +6,7 @@
 ------------------------------------------------------------------------
 
 local Area = require('stdlib.area.area')
+local table = require('stdlib.utils.table')
 
 --------------------------------------------------------------------------------
 -- globals
@@ -34,7 +35,7 @@ Constants.gfx_location = Constants.root .. '/graphics/'
 Constants.order = 'c[combinators]-d[inventory-sensor]'
 
 --------------------------------------------------------------------------------
--- Framework intializer
+-- Framework initializer
 --------------------------------------------------------------------------------
 
 ---@return FrameworkConfig config
@@ -121,8 +122,11 @@ Constants.settings_scan_range = Constants:with_prefix(Constants.settings_scan_ra
 Constants.settings_update_inventory_sensors = Constants:with_prefix(Constants.settings_update_inventory_sensors_name)
 
 --------------------------------------------------------------------------------
--- localization
+-- migration
 --------------------------------------------------------------------------------
+
+Constants.migration_names = { 'item-sensor' }
+Constants.migrations = table.array_to_dictionary(Constants.migration_names)
 
 --------------------------------------------------------------------------------
 return Constants

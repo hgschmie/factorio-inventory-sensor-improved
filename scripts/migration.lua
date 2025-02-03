@@ -18,10 +18,7 @@ if not Framework.settings:startup_setting(const.settings_update_inventory_sensor
 ---@field stats table<string, number>
 local Migration = {
     stats = {},
-    migration_names = { 'item-sensor' },
 }
-
-Migration.migrations = table.array_to_dictionary(Migration.migration_names)
 
 ---@param src LuaEntity
 ---@param dst LuaEntity
@@ -71,7 +68,7 @@ function Migration:migrateSensors()
         self.stats = {}
 
         local sensors = surface.find_entities_filtered {
-            name = self.migration_names,
+            name = const.migration_names,
         }
 
         for _, sensor in pairs(sensors) do
@@ -111,7 +108,7 @@ local BlueprintMigrator = {}
 ---@param blueprint_entity BlueprintEntity
 ---@return BlueprintEntity?
 function BlueprintMigrator:migrateBlueprintEntity(blueprint_entity)
-    if not Migration.migrations[blueprint_entity.name] then return nil end
+    if not const.migrations[blueprint_entity.name] then return nil end
 
     return create_entity(blueprint_entity)
 end
@@ -126,7 +123,7 @@ function BlueprintMigrator:migrateBlueprintEntities(blueprint_entities)
     for i = 1, #blueprint_entities, 1 do
         local blueprint_entity = blueprint_entities[i]
 
-        if Migration.migrations[blueprint_entity.name] then
+        if const.migrations[blueprint_entity.name] then
             local new_entity = self:migrateBlueprintEntity(blueprint_entity)
             if new_entity then
                 blueprint_entities[i] = new_entity
