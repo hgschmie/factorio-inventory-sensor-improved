@@ -18,8 +18,8 @@ config.control = true
 
 local Event = {
     __class = 'Event',
-    registry = {}, -- Holds registered events
-    custom_events = {}, -- Holds custom event ids
+    registry = {},        -- Holds registered events
+    custom_events = {},   -- Holds custom event ids
     stop_processing = {}, -- just has to be unique
     Filters = require('stdlib.event.modules.event_filters'),
     __index = require('stdlib.core')
@@ -131,7 +131,7 @@ function Event.register(event_id, handler, filter, pattern, options)
     --Recursively handle event id tables
     if Type.Table(event_id) then
         for _, id in pairs(event_id) do
-            Event.register(id, handler)
+            Event.register(id, handler, filter, pattern, options)
         end
         return Event
     end
@@ -155,7 +155,7 @@ function Event.register(event_id, handler, filter, pattern, options)
             Event.script.on_event(event_id, Event.dispatch)
         elseif event_id < 0 then
             --Use negative values to register on_nth_tick
-            Event.script.on_nth_tick(math.abs(event_id)--[[@as uint]] , Event.dispatch)
+            Event.script.on_nth_tick(math.abs(event_id) --[[@as uint]], Event.dispatch)
         end
     end
 
@@ -270,7 +270,7 @@ function Event.remove(event_id, handler, filter, pattern)
                 Event.script.on_event(event_id, nil)
             elseif event_id < 0 then
                 -- Use negative values to remove on_nth_tick
-                Event.script.on_nth_tick(math.abs(event_id)--[[@as uint]] , nil)
+                Event.script.on_nth_tick(math.abs(event_id) --[[@as uint]], nil)
             end
         elseif not found_something then
             log('Attempt to deregister already non-registered listener from event: ' .. event_id)
@@ -330,6 +330,7 @@ function Event.register_if(truthy, id, ...)
     end
     return Event
 end
+
 Event.on_event_if = Event.register_if
 
 function Event.remove_if(truthy, id, ...)

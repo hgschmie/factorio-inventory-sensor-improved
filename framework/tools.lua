@@ -14,27 +14,11 @@ local table = require('stdlib.utils.table')
 ---@field STATUS_SPRITES table<defines.entity_status, string>
 ---@field STATUS_NAMES table<defines.entity_status, string>
 ---@field STATUS_LEDS table<string, string>
----@field CREATION_EVENTS defines.events[]
----@field DELETION_EVENTS defines.events[]
 local Tools = {
     STATUS_LEDS = {},
     STATUS_TABLE = {},
     STATUS_NAMES = {},
     STATUS_SPRITES = {},
-    CREATION_EVENTS = {
-        defines.events.on_built_entity,
-        defines.events.on_robot_built_entity,
-        defines.events.on_space_platform_built_entity,
-        defines.events.script_raised_built,
-        defines.events.script_raised_revive,
-    },
-    DELETION_EVENTS = {
-        defines.events.on_player_mined_entity,
-        defines.events.on_robot_mined_entity,
-        defines.events.on_space_platform_mined_entity,
-        defines.events.on_entity_died,
-        defines.events.script_raised_destroy,
-    },
 
     copy = util.copy -- allow `tools.copy`
 }
@@ -69,105 +53,42 @@ for status, led in pairs(Tools.STATUS_TABLE) do
 end
 
 --------------------------------------------------------------------------------
--- entity event matcher management
+-- consistent entity key generation
 --------------------------------------------------------------------------------
 
----@param values string|string[] One or more values to match.
----@param entity_matcher fun(entity: LuaEntity?, pattern: any?): boolean
----@param invert boolean?
----@return fun(entity: LuaEntity?, pattern: any?): boolean
-local function create_matcher(values, entity_matcher, invert)
-    invert = invert or false
+---@alias framework.tools.EntityKey string
 
-    if type(values) ~= 'table' then
-        values = { values }
-    end
-    local matcher_map = table.array_to_dictionary(values, true)
-
-    return function(entity, pattern)
-        if not Is.Valid(entity) then return false end -- invalid is always not a match
-        local match = matcher_map[entity_matcher(entity, pattern)] or false
-
-        return (match and not invert) or (not match and invert) -- discrete XOR ...
-    end
+---@param entity LuaEntity?
+---@return string?
+function Tools:getName(entity)
+    if not (entity and entity.valid) then return nil end
+    return entity.type == 'entity-ghost' and entity.ghost_name or entity.name
 end
 
----@param matcher_function fun(entity: LuaEntity?, pattern: any?): boolean
----@return fun(ev: EventData, pattern: any?): boolean
-local function create_event_matcher(matcher_function)
-    return function(event, pattern)
-        if not event then return false end
-        -- move / clone events
-        if event.source and event.destination then
-            return matcher_function(event.source, pattern) and matcher_function(event.destination, pattern)
-        end
+---@param position MapPosition
+---@param surface_index number?
+---@param name string?
+---@return framework.tools.EntityKey
+function Tools:createEntityKey(position, surface_index, name)
+    surface_index = surface_index or 0
+    if name then return ('%2.2f:%2.2f:%d:%s'):format(position.x, position.y, surface_index, name) end
 
-        return matcher_function(event.entity --[[@as LuaEntity? ]], pattern)
-    end
+    return ('%2.2f:%2.2f:%d'):format(position.x, position.y, surface_index)
 end
 
----@param attribute string The entity attribute to match.
----@param values string|string[] One or more values to match.
----@param invert boolean? If true, invert the match.
----@return fun(ev: EventData, pattern: any?): boolean event_matcher
-function Tools.create_event_entity_matcher(attribute, values, invert)
-    local matcher_function = create_matcher(values, function(entity)
-        return entity and entity[attribute]
-    end, invert)
-
-    return create_event_matcher(matcher_function)
+---@param blueprint_entity BlueprintEntity
+---@param surface_index number?
+---@return framework.tools.EntityKey
+function Tools:createEntityKeyFromBlueprintEntity(blueprint_entity, surface_index)
+    return self:createEntityKey(blueprint_entity.position, surface_index, blueprint_entity.name)
 end
 
----@param attribute string The entity attribute to match.
----@param values string|string[] One or more values to match.
----@param invert boolean? If true, invert the match.
----@return fun(ev: EventData, pattern: any): boolean event_matcher
-function Tools.create_event_ghost_entity_matcher(attribute, values, invert)
-    local matcher_function = create_matcher(values, function(entity)
-        return entity and entity.type == 'entity-ghost' and entity[attribute]
-    end, invert)
-
-    return create_event_matcher(matcher_function)
-end
-
----@param values string|string[] One or more names to match to the ghost_name field.
----@param invert boolean? If true, invert the match.
----@return fun(ev: EventData, pattern: any): boolean event_matcher
-function Tools.create_event_ghost_entity_name_matcher(values, invert)
-    return Tools.create_event_ghost_entity_matcher('ghost_name', values, invert)
-end
-
-
----@param func fun(entity: LuaEntity?): any? Function called for any entity, needs to return a value or nil
----@param values string|string[] One or more values to match by the function return value.
----@param invert boolean? If true, invert the match.
----@return fun(ev: EventData, pattern: any): boolean event_matcher
-function Tools.create_entity_matcher(func, values, invert)
-    local matcher_function = create_matcher(values, func, invert)
-
-    return create_event_matcher(matcher_function)
-end
-
---------------------------------------------------------------------------------
--- event registration support (only for runtime!)
---------------------------------------------------------------------------------
-
-if script then
-    local Event = require('stdlib.event.event')
-
-    --- Registers a handler for the given events.
-    --- works around https://github.com/Afforess/Factorio-Stdlib/pull/164
-    ---@param event_ids defines.events[]
-    ---@param handler fun(ev: EventData)
-    ---@param filter  fun(ev: EventData, pattern: any?)?:boolean
-    ---@param pattern any?
-    ---@param options table<string, boolean>?
-    function Tools.event_register(event_ids, handler, filter, pattern, options)
-        assert(Is.Table(event_ids))
-        for _, event_id in pairs(event_ids) do
-            Event.register(event_id, handler, filter, pattern, options)
-        end
-    end
+---@param entity LuaEntity
+---@return framework.tools.EntityKey?
+function Tools:createEntityKeyFromEntity(entity)
+    local name = self:getName(entity)
+    if not name then return nil end
+    return self:createEntityKey(entity.position, entity.surface_index, name)
 end
 
 return Tools

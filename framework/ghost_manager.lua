@@ -2,29 +2,31 @@
 ------------------------------------------------------------------------
 -- Manage all ghost state for robot building
 ------------------------------------------------------------------------
+assert(script)
 
 local Event = require('stdlib.event.event')
 local Is = require('stdlib.utils.is')
 local Position = require('stdlib.area.position')
 
+local Matchers = require('framework.matchers')
 local tools = require('framework.tools')
 
 local TICK_INTERVAL = 61 -- run all 61 ticks
 local ATTACHED_GHOST_LINGER_TIME = 600
 
----@alias FrameworkGhostManagerRefreshCallback function(entity: FrameworkAttachedEntity, all_entities: FrameworkAttachedEntity[]): FrameworkAttachedEntity[]
+---@alias framework.ghost_manager.RefreshCallback fun(entity: framework.ghost_manager.AttachedEntity, all_entities: framework.ghost_manager.AttachedEntity[]): framework.ghost_manager.AttachedEntity[]
 
----@class FrameworkGhostManager
----@field refresh_callbacks FrameworkGhostManagerRefreshCallback[]
+---@class framework.ghost_manager
+---@field refresh_callbacks framework.ghost_manager.RefreshCallback[]
 local FrameworkGhostManager = {
     refresh_callbacks = {},
 }
 
----@return FrameworkGhostManagerState state Manages ghost state
+---@return framework.ghost_manager.State state Manages ghost state
 function FrameworkGhostManager:state()
     local storage = Framework.runtime:storage()
 
-    ---@type FrameworkGhostManagerState
+    ---@type framework.ghost_manager.State
     storage.ghost_manager = storage.ghost_manager or {
         ghost_entities = {},
     }
@@ -33,7 +35,7 @@ function FrameworkGhostManager:state()
 end
 
 ---@param entity LuaEntity
----@param player_index integer
+---@param player_index integer?
 function FrameworkGhostManager:registerGhost(entity, player_index)
     -- if an entity ghost was placed, register information to configure
     -- an entity if it is placed over the ghost
@@ -41,14 +43,11 @@ function FrameworkGhostManager:registerGhost(entity, player_index)
     local state = self:state()
 
     state.ghost_entities[entity.unit_number] = {
-        -- maintain entity reference for attached entity ghosts
-        entity = entity,
-        -- but for matching ghost replacement, all the values
-        -- must be kept because the entity is invalid when it
-        -- replaces the ghost
+        key = tools:createEntityKeyFromEntity(entity),
         name = entity.ghost_name,
         position = entity.position,
-        orientation = entity.orientation,
+        surface_index = entity.surface_index,
+        direction = entity.direction,
         tags = entity.tags,
         player_index = player_index,
         -- allow 10 seconds of lingering time until a refresh must have happened
@@ -58,29 +57,36 @@ end
 
 function FrameworkGhostManager:deleteGhost(unit_number)
     local state = self:state()
-
-    if not state.ghost_entities[unit_number] then return end
-    state.ghost_entities[unit_number].entity.destroy()
     state.ghost_entities[unit_number] = nil
 end
 
----@param entity LuaEntity
----@return FrameworkAttachedEntity? ghost_entities
-function FrameworkGhostManager:findMatchingGhost(entity)
+---@param key framework.tools.EntityKey?
+---@return framework.ghost_manager.AttachedEntity? ghost
+function FrameworkGhostManager:findGhostForKey(key)
+    if not key then return end
+
     local state = self:state()
 
     -- find a ghost that matches the entity
-    for idx, ghost in pairs(state.ghost_entities) do
+    for _, ghost in pairs(state.ghost_entities) do
         -- it provides the tags and player_index for robot builds
-        if entity.name == ghost.name
-            and entity.position.x == ghost.position.x
-            and entity.position.y == ghost.position.y
-            and entity.orientation == ghost.orientation then
-            self:deleteGhost(idx)
-            return ghost
-        end
+        if ghost.key == key then return ghost end
     end
+
     return nil
+end
+
+---@param entity LuaEntity
+---@return framework.ghost_manager.AttachedEntity? ghost_entities
+function FrameworkGhostManager:findGhostForEntity(entity)
+    return self:findGhostForKey(tools:createEntityKeyFromEntity(entity))
+end
+
+---@param blueprint_entity BlueprintEntity
+---@param surface_index number
+---@return framework.ghost_manager.AttachedEntity? ghost_entities
+function FrameworkGhostManager:findGhostForBlueprintEntity(blueprint_entity, surface_index)
+    return self:findGhostForKey(tools:createEntityKeyFromBlueprintEntity(blueprint_entity, surface_index))
 end
 
 --- Find all ghosts within a given area. If a ghost is found, pass
@@ -89,8 +95,8 @@ end
 --- it from storage.
 ---
 ---@param area BoundingBox
----@param callback fun(ghost: FrameworkAttachedEntity) : any?
----@return table<any, FrameworkAttachedEntity> ghost_entities
+---@param callback fun(ghost: framework.ghost_manager.AttachedEntity) : any?
+---@return table<any, framework.ghost_manager.AttachedEntity> ghost_entities
 function FrameworkGhostManager:findGhostsInArea(area, callback)
     local state = self:state()
 
@@ -109,8 +115,12 @@ function FrameworkGhostManager:findGhostsInArea(area, callback)
     return ghosts
 end
 
+--------------------------------------------------------------------------------
+-- event callbacks
+--------------------------------------------------------------------------------
+
 ---@param event EventData.on_built_entity | EventData.on_robot_built_entity | EventData.script_raised_revive | EventData.script_raised_built
-function FrameworkGhostManager.onGhostEntityCreated(event)
+local function on_ghost_entity_created(event)
     local entity = event and event.entity
     if not Is.Valid(entity) then return end
 
@@ -119,8 +129,18 @@ function FrameworkGhostManager.onGhostEntityCreated(event)
     Framework.ghost_manager:registerGhost(entity, event.player_index)
 end
 
+---@param event EventData.on_post_entity_died
+local function on_post_entity_died(event)
+    local entity = event and event.ghost
+    if not Is.Valid(entity) then return end
+
+    script.register_on_object_destroyed(entity)
+
+    Framework.ghost_manager:registerGhost(entity)
+end
+
 ---@param event EventData.on_object_destroyed
-local function onObjectDestroyed(event)
+local function on_object_destroyed(event)
     Framework.ghost_manager:deleteGhost(event.useful_id)
 end
 
@@ -128,10 +148,13 @@ end
 -- ticker
 --------------------------------------------------------------------------------
 
-function FrameworkGhostManager:tick()
+local function tick()
+    local self = Framework.ghost_manager
+    assert(self)
+
     local state = self:state()
 
-    local all_ghosts = state.ghost_entities --[[@as FrameworkAttachedEntity[] ]]
+    local all_ghosts = state.ghost_entities --[[@as framework.ghost_manager.AttachedEntity[] ]]
 
     if table_size(all_ghosts) == 0 then return end
 
@@ -153,33 +176,64 @@ function FrameworkGhostManager:tick()
     end
 end
 
----@param ghost_names string|string[] One or more names to match to the ghost_name field.
-function FrameworkGhostManager:register_for_ghost_names(ghost_names)
-    local event_matcher = tools.create_event_ghost_entity_name_matcher(ghost_names)
-    tools.event_register(tools.CREATION_EVENTS, self.onGhostEntityCreated, event_matcher)
+--------------------------------------------------------------------------------
+-- public API
+--------------------------------------------------------------------------------
+
+--- Registers a name as a managed ghost. Those are available e.g. for construction to
+--- retrieve tags. This also supports undo/redo passing tags to ghosts.
+---
+--- Normal entities (main entities) should register without a callback as they are managed
+--- by the game and the manager only takes care of tag data and player_index.
+---
+--- When adding a callback, the callback will be called periodically to "refresh" the ghost
+--- list. Any ghost that was registered *without* a callback will be removed when the linger
+--- period expires and it had not been refreshed.
+---
+--- When creating a multi-ghost entity (e.g. for connection pins), register the main entity
+--- with a callback and all other entities without. When the all the entities are placed down,
+--- the callback will be called for the main entity which in turn must find its associated
+--- entity ghosts and refresh them as well (return on the refresh list). If the main ghost is
+--- replaced but the others are not, they will be removed when the linger period expires.
+---
+---@param names string|string[] One or more names to match to the ghost_name field.
+---@param callback? framework.ghost_manager.RefreshCallback Optional callback to refresh entities
+function FrameworkGhostManager:registerForName(names, callback)
+    assert(names)
+    local event_matcher = Matchers:matchEventEntityGhostName(names)
+    Event.register(Matchers.CREATION_EVENTS, on_ghost_entity_created, event_matcher)
+    Event.register(defines.events.on_post_entity_died, on_post_entity_died)
+
+    -- if a callback was provided, register callback and turn on the ticker
+    if callback then
+        if type(names) ~= 'table' then names = { names } end
+
+        Event.register_if(table_size(self.refresh_callbacks) == 0, -TICK_INTERVAL, tick)
+
+        for _, name in pairs(names) do
+            self.refresh_callbacks[name] = callback
+        end
+    end
 end
 
 ---@param attribute string The entity attribute to match.
 ---@param values string|string[] One or more values to match.
-function FrameworkGhostManager:register_for_ghost_attributes(attribute, values)
-    local event_matcher = tools.create_event_ghost_entity_matcher(attribute, values)
-    tools.event_register(tools.CREATION_EVENTS, self.onGhostEntityCreated, event_matcher)
+function FrameworkGhostManager:registerForAttribute(attribute, values)
+    local event_matcher = Matchers:matchEventEntityAsGhost(attribute, values)
+    Event.register(Matchers.CREATION_EVENTS, on_ghost_entity_created, event_matcher)
+    Event.register(defines.events.on_post_entity_died, on_post_entity_died)
 end
 
---- Registers a ghost entity for refresh. The callback will receive the entity and must return
---- at least the entity itself to refresh it. It may return additional entities to refresh.
----@param names string|string[]
----@param callback FrameworkGhostManagerRefreshCallback
-function FrameworkGhostManager:register_for_ghost_refresh(names, callback)
-    if type(names) ~= 'table' then
-        names = { names }
-    end
-
-    Event.register_if(table_size(self.refresh_callbacks) == 0, -TICK_INTERVAL, function(ev) Framework.ghost_manager:tick() end)
-
-    for _, name in pairs(names) do
-        self.refresh_callbacks[name] = callback
-    end
+--- Can be called by the tombstone manager. Will pass in all the information necessary to find
+--- a ghost that matches a blueprint entity to build and apply a possible tombstone as tags to the
+--- ghost.
+---@param data table<string, any>
+---@param position MapPosition
+---@param surface_index number
+---@param name string
+function FrameworkGhostManager.mapTombstoneToGhostTags(data, position, surface_index, name)
+    local ghost = Framework.ghost_manager:findGhostForKey(tools:createEntityKey(position, surface_index, name))
+    if ghost then ghost.tags = data end
 end
 
 --------------------------------------------------------------------------------
@@ -187,7 +241,7 @@ end
 --------------------------------------------------------------------------------
 
 local function register_events()
-    Event.register(defines.events.on_object_destroyed, onObjectDestroyed)
+    Event.register(defines.events.on_object_destroyed, on_object_destroyed)
 end
 
 Event.on_init(register_events)

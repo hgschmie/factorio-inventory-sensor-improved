@@ -7,17 +7,18 @@
 --- ghost_manager.lua
 ----------------------------------------------------------------------------------------------------
 
----@class FrameworkAttachedEntity
----@field entity LuaEntity
----@field name string?
----@field position MapPosition?
----@field orientation float?
+---@class framework.ghost_manager.AttachedEntity
+---@field key string
+---@field name string
+---@field surface_index number
+---@field position MapPosition
+---@field direction defines.direction
 ---@field tags Tags?
 ---@field player_index integer
 ---@field tick integer
 
----@class FrameworkGhostManagerState
----@field ghost_entities FrameworkAttachedEntity[]
+---@class framework.ghost_manager.State
+---@field ghost_entities framework.ghost_manager.AttachedEntity[]
 
 ----------------------------------------------------------------------------------------------------
 --- gui.lua
