@@ -7,9 +7,8 @@ assert(script)
 local Event = require('stdlib.event.event')
 local Is = require('stdlib.utils.is')
 local Player = require('stdlib.event.player')
-local Version = require('stdlib.vendor.version')
 
-local tools = require('framework.tools')
+local Matchers = require('framework.matchers')
 
 local const = require('lib.constants')
 
@@ -34,13 +33,16 @@ local function onEntityCreated(event)
     local player_index = event.player_index
     local tags = event.tags
 
-    local entity_ghost = Framework.ghost_manager:findMatchingGhost(entity)
+    local entity_ghost = Framework.ghost_manager:findGhostForEntity(entity)
     if entity_ghost then
+        Framework.ghost_manager:deleteGhost(entity.unit_number)
         player_index = player_index or entity_ghost.player_index
         tags = tags or entity_ghost.tags or {}
     end
 
-    This.SensorController:create(entity, tags)
+    local config = tags and tags[const.config_tag_name]
+
+    This.SensorController:create(entity, config)
 end
 
 ---@param event EventData.on_player_mined_entity | EventData.on_robot_mined_entity | EventData.on_entity_died | EventData.script_raised_destroy
@@ -100,9 +102,7 @@ local function onEntityCloned(event)
     local src_data = This.SensorController:entity(event.source.unit_number)
     if not src_data then return end
 
-    local tags = { is_config = src_data.config } -- clone the config from the src to the destination
-
-    This.SensorController:create(event.destination, tags)
+    This.SensorController:create(event.destination, src_data.config)
 end
 
 --------------------------------------------------------------------------------
@@ -178,7 +178,7 @@ end
 --------------------------------------------------------------------------------
 
 local function register_events()
-    local fi_entity_filter = tools.create_event_entity_matcher('name', const.inventory_sensor_name)
+    local fi_entity_filter = Matchers:matchEventEntityName(const.inventory_sensor_name)
 
     -- Configuration changes (runtime and startup)
     Event.on_configuration_changed(onConfigurationChanged)
@@ -186,8 +186,8 @@ local function register_events()
     Event.register(defines.events.on_tick, onTick)
 
     -- entity creation/deletion
-    tools.event_register(tools.CREATION_EVENTS, onEntityCreated, fi_entity_filter)
-    tools.event_register(tools.DELETION_EVENTS, onEntityDeleted, fi_entity_filter)
+    Event.register(Matchers.CREATION_EVENTS, onEntityCreated, fi_entity_filter)
+    Event.register(Matchers.DELETION_EVENTS, onEntityDeleted, fi_entity_filter)
 
     -- entity destroy
     Event.register(defines.events.on_object_destroyed, onObjectDestroyed)
@@ -195,7 +195,15 @@ local function register_events()
     Event.register(defines.events.on_player_rotated_entity, onEntityMoved, fi_entity_filter)
 
     -- Manage blueprint configuration setting
-    Framework.blueprint:register_callback(const.inventory_sensor_name, This.SensorController.blueprint_callback)
+    Framework.blueprint:registerCallback(const.inventory_sensor_name, This.SensorController.serialize_config)
+
+    Framework.ghost_manager:registerForName(const.inventory_sensor_name)
+
+    -- manage tombstones for undo/redo and dead entities
+    Framework.tombstone:registerCallback(const.inventory_sensor_name, {
+        create_tombstone = This.SensorController.serialize_config,
+        apply_tombstone = Framework.ghost_manager.mapTombstoneToGhostTags,
+    })
 
     -- Entity settings pasting
     Event.register(defines.events.on_entity_settings_pasted, onEntitySettingsPasted, fi_entity_filter)

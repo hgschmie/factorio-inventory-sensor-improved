@@ -54,7 +54,7 @@ local function migrate_sensor(surface, item_sensor)
 
     copy_wire_connections(item_sensor, main)
 
-    local entity_data = This.SensorController:create(main)
+    This.SensorController:create(main)
 
     Migration.stats[item_sensor.name] = (Migration.stats[item_sensor.name] or 0) + 1
 

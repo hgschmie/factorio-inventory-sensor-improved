@@ -33,6 +33,7 @@ Constants.name = 'inventory-sensor'
 Constants.root = '__inventory-sensor-improved__'
 Constants.gfx_location = Constants.root .. '/graphics/'
 Constants.order = 'c[combinators]-d[inventory-sensor]'
+Constants.config_tag_name = 'is_config'
 
 --------------------------------------------------------------------------------
 -- Framework initializer

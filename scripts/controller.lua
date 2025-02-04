@@ -76,11 +76,11 @@ end
 ------------------------------------------------------------------------
 
 ---@param main_entity LuaEntity
----@param tags Tags?
-function InventorySensorController:create(main_entity, tags)
+---@param config inventory_sensor.Config?
+function InventorySensorController:create(main_entity, config)
     main_entity.rotatable = true
 
-    local is_data = Sensor.new(main_entity, tags)
+    local is_data = Sensor.new(main_entity, config)
     self:setEntity(main_entity.unit_number, is_data)
 
     -- initial scan when created
@@ -113,20 +113,20 @@ function InventorySensorController:move(unit_number)
 end
 
 --------------------------------------------------------------------------------
--- Blueprint
+-- serialization for Blueprinting and Tombstones
 --------------------------------------------------------------------------------
 
 ---@param entity LuaEntity
----@param idx integer
----@param blueprint LuaItemStack
----@param context table<string, any>
-function InventorySensorController.blueprint_callback(entity, idx, blueprint, context)
+---@return table<string, any>?
+function InventorySensorController.serialize_config(entity)
     if not Is.Valid(entity) then return end
 
     local is_data = This.SensorController:entity(entity.unit_number)
     if not is_data then return end
 
-    blueprint.set_blueprint_entity_tag(idx, 'is_config', is_data.config)
+    return {
+        [const.config_tag_name] = is_data.config,
+    }
 end
 
 ----------------------------------------------------------------------------------------------------

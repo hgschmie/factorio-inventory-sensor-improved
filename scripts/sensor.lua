@@ -67,9 +67,9 @@ end
 --
 
 ---@param sensor_entity LuaEntity
----@param tags Tags?
+---@param config inventory_sensor.Config? 
 ---@return inventory_sensor.Data
-function InventorySensor.new(sensor_entity, tags)
+function InventorySensor.new(sensor_entity, config)
     ---@type inventory_sensor.Data
     local data = {
         sensor_entity = sensor_entity,
@@ -81,8 +81,8 @@ function InventorySensor.new(sensor_entity, tags)
         },
     }
 
-    if tags then
-        InventorySensor.reconfigure(data, tags.is_config --[[@as inventory_sensor.Config? ]])
+    if config then
+        InventorySensor.reconfigure(data, config)
     end
 
     return data

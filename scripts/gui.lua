@@ -10,6 +10,7 @@ local Is = require('stdlib.utils.is')
 local table = require('stdlib.utils.table')
 
 local tools = require('framework.tools')
+local Matchers = require('framework.matchers')
 local signal_converter = require('framework.signal_converter')
 
 local const = require('lib.constants')
@@ -449,8 +450,8 @@ end
 local function init_gui()
     Framework.gui_manager:register_gui_type('combinator-gui', get_gui_event_definition())
 
-    local match_inventory_sensor = tools.create_event_entity_matcher('name', const.inventory_sensor_name)
-    local match_ghost_inventory_sensor = tools.create_event_ghost_entity_matcher('ghost_name', const.inventory_sensor_name)
+    local match_inventory_sensor = Matchers:matchEventEntityName(const.inventory_sensor_name)
+    local match_ghost_inventory_sensor = Matchers:matchEventEntityGhostName(const.inventory_sensor_name)
 
     Event.on_event(defines.events.on_gui_opened, Gui.onGuiOpened, match_inventory_sensor)
     Event.on_event(defines.events.on_gui_opened, Gui.onGhostGuiOpened, match_ghost_inventory_sensor)
