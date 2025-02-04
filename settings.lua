@@ -24,15 +24,15 @@ data:extend({
     {
         type = "double-setting",
         name = const.settings_scan_offset,
-        order = "ca",
-        setting_type = "runtime-global",
+        order = "aa",
+        setting_type = "startup",
         default_value = 0.2,
     },
     {
         type = "double-setting",
         name = const.settings_scan_range,
-        order = "cb",
-        setting_type = "runtime-global",
+        order = "ab",
+        setting_type = "startup",
         default_value = 1.5,
     },
     {
@@ -47,7 +47,7 @@ data:extend({
         -- replace old Inventory Sensors
         type = "bool-setting",
         name = const.settings_update_inventory_sensors,
-        order = "aa",
+        order = "ba",
         setting_type = "startup",
         default_value = false,
     },

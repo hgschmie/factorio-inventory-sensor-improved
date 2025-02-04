@@ -17,7 +17,12 @@ local is_entities = require('scripts.supported-entities')
 ------------------------------------------------------------------------
 
 ---@class InventorySensor
-local InventorySensor = {}
+---@field scan_offset number
+---@field scan_range number
+local InventorySensor = {
+    scan_offset = Framework.settings:startup_setting(const.settings_scan_offset_name),
+    scan_range = Framework.settings:startup_setting(const.settings_scan_range_name),
+}
 
 ----------------------------------------------------------------------------------------------------
 -- helpers
@@ -67,7 +72,7 @@ end
 --
 
 ---@param sensor_entity LuaEntity
----@param config inventory_sensor.Config? 
+---@param config inventory_sensor.Config?
 ---@return inventory_sensor.Data
 function InventorySensor.new(sensor_entity, config)
     ---@type inventory_sensor.Data
@@ -115,14 +120,14 @@ end
 function InventorySensor.create_scan_area(is_data)
     assert(is_data.sensor_entity)
 
-    local scan_offset = Framework.settings:runtime_setting(const.settings_scan_offset_name)
-    local scan_range = Framework.settings:runtime_setting(const.settings_scan_range_name)
-
     local entity = is_data.sensor_entity
     local position = Position(entity.position)
-    local area = Area.new { position + { -0.5, -scan_offset }, position + { 0.5, scan_offset } }
+    local area = Area.new {
+        position + { -0.5, -InventorySensor.scan_offset },
+        position + { 0.5, InventorySensor.scan_offset }
+    }
     area = is_horizontal(entity) and area or area:flip()
-    area = area:translate(Direction.opposite(entity.direction), scan_range - 0.5)
+    area = area:translate(Direction.opposite(entity.direction), InventorySensor.scan_range - 0.5)
 
     return area
 end
