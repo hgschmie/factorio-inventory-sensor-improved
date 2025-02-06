@@ -10,6 +10,11 @@ local SignalConverter = {
         entity = 'entity-with-quality',
         recipe = 'recipe-with-quality',
         equipment = 'equipment-with-quality',
+    },
+    signal_id_type = { -- https://lua-api.factorio.com/latest/concepts/SignalIDType.html
+        virtual = 'virtual_signal',
+        ['space-location'] = 'space_location',
+        ['asteroid-chunk'] = 'asteroid_chunk',
     }
 }
 
@@ -29,8 +34,9 @@ end
 function SignalConverter:signal_to_prototype(signal)
     assert(signal)
 
-    local signal_type = signal.signal.type or 'item'                          -- see https://lua-api.factorio.com/latest/concepts/SignalID.html
-    local type = signal_type == 'virtual' and 'virtual_signal' or signal_type -- see https://lua-api.factorio.com/latest/classes/LuaPrototypes.html
+    local signal_type = signal.signal.type or 'item' -- see https://lua-api.factorio.com/latest/concepts/SignalID.html
+    local type = self.signal_id_type[signal_type] and self.signal_id_type[signal_type]
+        or signal_type                               -- see https://lua-api.factorio.com/latest/classes/LuaPrototypes.html
 
     assert(prototypes[type], ('prototype [%s] does not exist'):format(type))
     assert(prototypes[type][signal.signal.name], ('prototype [%s][%s] does not exist'):format(type, signal.signal.name))
@@ -51,7 +57,7 @@ function SignalConverter:signal_to_elem_id(signal)
 
     if signal_type == 'virtual' then
         result.type = 'signal'
-        result.signal_type = signal_type
+        result.signal_type = signal_type ---@diagnostic disable-line: inject-field
     elseif signal.signal.quality then
         if self.supports_quality[result.type] then result.type = self.supports_quality[result.type] end
         result.quality = signal.signal.quality
@@ -76,8 +82,9 @@ end
 function SignalConverter:logistic_filter_to_prototype(filter)
     assert(filter)
 
-    local filter_type = filter.value.type or 'item'                           -- see https://lua-api.factorio.com/latest/concepts/SignalID.html
-    local type = filter_type == 'virtual' and 'virtual_signal' or filter_type -- see https://lua-api.factorio.com/latest/classes/LuaPrototypes.html
+    local filter_type = filter.value.type or 'item' -- see https://lua-api.factorio.com/latest/concepts/SignalID.html
+    local type = self.signal_id_type[filter_type] and self.signal_id_type[filter_type]
+        or filter_type                              -- see https://lua-api.factorio.com/latest/classes/LuaPrototypes.html
 
     assert(prototypes[type], ('prototype [%s] does not exist'):format(type))
     assert(prototypes[type][filter.value.name], ('prototype [%s][%s] does not exist'):format(type, filter.value.name))
@@ -99,9 +106,9 @@ function SignalConverter:logistic_filter_to_elem_id(filter)
 
     if filter_type == 'virtual' then
         result.type = 'signal'
-        result.signal_type = filter_type
+        result.signal_type = filter_type ---@diagnostic disable-line: inject-field
     elseif filter.value.quality then
-        if self.supports_quality[result.type] then result.type =self.supports_quality[result.type] end
+        if self.supports_quality[result.type] then result.type = self.supports_quality[result.type] end
         result.quality = filter.value.quality
     end
 
@@ -111,7 +118,6 @@ end
 ---@param signal Signal
 ---@return LogisticFilter
 function SignalConverter:signal_to_logistic_filter(signal)
-
     local type = signal.signal.type or 'item'
     local quality = signal.signal.quality or 'normal'
 
@@ -127,6 +133,5 @@ function SignalConverter:signal_to_logistic_filter(signal)
 
     return filter
 end
-
 
 return SignalConverter
