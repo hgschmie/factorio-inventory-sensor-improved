@@ -1,4 +1,3 @@
----@meta
 ------------------------------------------------------------------------
 -- Manages tombstone (configuration data after an entity has been removed)
 --
@@ -86,7 +85,10 @@ function FrameworkTombstoneManager:removeTombstoneForEntity(entity)
 
     local state = self:state()
     local key = tools:createEntityKeyFromEntity(entity)
-    if key then state.tombstones[key] = nil end
+    if key then
+        state.tombstones[key] = nil
+        state.last_tick_index = nil -- reset the ticker
+    end
 end
 
 --- Retrieves a tombstone based on a blueprint entity and surface index.
