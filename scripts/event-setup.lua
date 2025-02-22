@@ -35,7 +35,6 @@ local function onEntityCreated(event)
 
     local entity_ghost = Framework.ghost_manager:findGhostForEntity(entity)
     if entity_ghost then
-        Framework.ghost_manager:deleteGhost(entity.unit_number)
         player_index = player_index or entity_ghost.player_index
         tags = tags or entity_ghost.tags or {}
     end
