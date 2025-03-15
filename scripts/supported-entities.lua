@@ -78,8 +78,27 @@ end
 local function read_charge(is_data, sink)
     local entity = is_data.scan_entity
     if not (entity and entity.valid) then return end
-    assert(entity)
     sink { value = const.signals.charge_signal, min = math.floor(entity.energy / entity.electric_buffer_size * 100) }
+end
+
+---@param is_data inventory_sensor.Data
+---@param sink fun(filter: LogisticFilter)
+local function read_silo_progress(is_data, sink)
+    local entity = is_data.scan_entity
+    if not (entity and entity.valid) then return end
+
+    local progress = math.ceil((entity.rocket_parts * 100) / entity.prototype.rocket_parts_required)
+    local rocket_present = entity.rocket
+
+    if progress == 0 and rocket_present then
+        -- old sensor reported 100 when a rocket is fully built
+        progress = 100
+        rocket_present = nil
+    end
+
+    sink { value = const.signals.progress_signal, min = progress }
+    sink { value = const.signals.rocket_ready_signal, min = rocket_present and 1 or 0 }
+
 end
 
 
@@ -160,6 +179,7 @@ local rocketsilo_type = {
         defines.inventory.rocket_silo_output,
         defines.inventory.rocket_silo_rocket,
     },
+    contribute = read_silo_progress,
 }
 
 local turret_type = {

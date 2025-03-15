@@ -97,6 +97,7 @@ Constants.signal_names = {
     spider_detected_signal = 'inv-sensor-detected-spider',
     wagon_detected_signal = 'inv-sensor-detected-wagon',
     locomotive_detected_signal = 'inv-sensor-detected-locomotive',
+    rocket_ready_signal = 'signal-R',
 }
 
 Constants.signals = {}
