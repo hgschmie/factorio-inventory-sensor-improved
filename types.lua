@@ -24,7 +24,6 @@
 ---@field scan_entity_id integer?
 ---@field read_grid boolean
 
-
 ---@class inventory_sensor.Data
 ---@field sensor_entity LuaEntity
 ---@field inventories table<defines.inventory, true>

@@ -108,8 +108,7 @@ end
 -- Configuration changes (runtime and startup)
 --------------------------------------------------------------------------------
 
----@param changed ConfigurationChangedData?
-local function onConfigurationChanged(changed)
+local function onConfigurationChanged()
     This.SensorController:init()
 
     -- enable inventory sensor if circuit network is researched.

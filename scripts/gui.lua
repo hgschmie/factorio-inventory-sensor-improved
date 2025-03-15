@@ -15,6 +15,8 @@ local signal_converter = require('framework.signal_converter')
 
 local const = require('lib.constants')
 
+local Sensor = require('scripts.sensor')
+
 ---@class InventorySensorGui
 local Gui = {}
 
@@ -239,31 +241,23 @@ function Gui.render_preview(gui, is_data)
     assert(signal_view)
 
     signal_view.clear()
+    local section = Sensor.get_section(is_data)
 
-    local control = is_data.sensor_entity.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior ]]
-    assert(control)
-
-    if not (is_data.config.enabled and control.sections_count > 0 and control.sections[1].filters_count > 0) then return end
-
-    local count = 0
-    for section_count = 1, control.sections_count, 1 do
-        for _, filter in pairs(control.sections[section_count].filters) do
-            count = count + 1
-            local button = signal_view.add {
-                type = 'sprite-button',
-                style = 'compact_slot',
-                number = filter.min,
-                sprite = signal_converter:logistic_filter_to_sprite_name(filter),
-                tooltip = signal_converter:logistic_filter_to_prototype(filter).localised_name,
-                elem_tooltip = signal_converter:logistic_filter_to_elem_id(filter),
+    for _, filter in pairs(section.filters) do
+        local button = signal_view.add {
+            type = 'sprite-button',
+            style = 'compact_slot',
+            number = filter.min,
+            sprite = signal_converter:logistic_filter_to_sprite_name(filter),
+            tooltip = signal_converter:logistic_filter_to_prototype(filter).localised_name,
+            elem_tooltip = signal_converter:logistic_filter_to_elem_id(filter),
+        }
+        if filter.value.quality and filter.value.quality ~= 'normal' then
+            button.add {
+                type = 'sprite',
+                style = 'framework_quality',
+                sprite = 'quality/' .. filter.value.quality,
             }
-            if filter.value.quality and filter.value.quality ~= 'normal' then
-                button.add {
-                    type = 'sprite',
-                    style = 'framework_quality',
-                    sprite = 'quality/' .. filter.value.quality,
-                }
-            end
         end
     end
 end

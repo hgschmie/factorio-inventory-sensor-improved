@@ -178,18 +178,16 @@ end
 ----------------------------------------------------------------------------------------------------
 
 ---@param is_data inventory_sensor.Data
----@return LuaConstantCombinatorControlBehavior
-function InventorySensor.clear(is_data)
+---@return LuaLogisticSection
+function InventorySensor.get_section(is_data)
     -- empty the signals sections
 
-    local control = is_data.sensor_entity.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior ]]
-    assert(control)
-
-    for i = 1, control.sections_count, 1 do
-        control.remove_section(i)
+    local control = assert(is_data.sensor_entity.get_or_create_control_behavior()) --[[@as LuaConstantCombinatorControlBehavior ]]
+    if control.sections_count == 0 then
+        control.add_section()
     end
 
-    return control
+    return assert(control.get_section(1))
 end
 
 --- Loads the state of the connected entity into the sensor.
@@ -201,7 +199,8 @@ function InventorySensor.load(is_data, force)
     if not (force or (game.tick - load_time >= Framework.settings:runtime_setting(const.settings_update_interval_name))) then return false end
     is_data.load_time = game.tick
 
-    local control = InventorySensor.clear(is_data)
+    local section = InventorySensor.get_section(is_data)
+    section.filters = {}
 
     if not is_data.config.enabled then return false end
     local scan_entity = is_data.scan_entity
@@ -210,34 +209,22 @@ function InventorySensor.load(is_data, force)
     local scan_controller = locate_scan_controller(scan_entity)
     if not scan_controller then return false end
 
-    ---@type integer
-    local idx = 0
-
-    ---@type table<string, table<string, table<string, number>>>
+    ---@type table<string, number>
     local cache = {}
+
+    ---@type LogisticFilter[]
+    local filters = {}
 
     ---@type fun(filter: LogisticFilter)
     local sink = function(filter)
         local signal = filter.value --[[@as SignalFilter]]
-        cache[signal.type] = cache[signal.type] or {}
-        cache[signal.type][signal.name] = cache[signal.type][signal.name] or {}
-
-        local index = cache[signal.type][signal.name][signal.quality]
+        local key = ('%s:%s:%s'):format(signal.name, signal.type or 'item', signal.quality or 'normal')
+        local index = cache[key]
         if not index then
-            index = idx
-            cache[signal.type][signal.name][signal.quality] = index
-            idx = idx + 1
-            local section = control.sections[math.floor(index / 1000) + 1] or control.add_section()
-
-            local pos = index % 1000 + 1
-            section.set_slot(pos, filter)
+            table.insert(filters, filter)
+            cache[key] = #filters
         else
-            local section = control.sections[math.floor(index / 1000) + 1]
-            assert(section)
-
-            local pos = index % 1000 + 1
-            filter.min = filter.min + section.filters[pos].min
-            section.set_slot(pos, filter)
+            filters[index].min = filters[index].min + filter.min
         end
     end
 
@@ -246,13 +233,13 @@ function InventorySensor.load(is_data, force)
 
     -- load inventories for the entity
     if table_size(is_data.inventories) > 0 then
-        for inventory in pairs(is_data.inventories) do
-            local inventory_items = scan_entity.get_inventory(inventory)
-            if inventory_items then
-                for _, item in pairs(inventory_items.get_contents()) do
+        for inventory_index in pairs(is_data.inventories) do
+            local inventory = scan_entity.get_inventory(inventory_index)
+            if inventory and inventory.valid then
+                for _, item in pairs(inventory.get_contents()) do
                     sink { value = { name = item.name, type = 'item', quality = item.quality or 'normal' }, min = item.count }
 
-                    if burner and (inventory == defines.inventory.fuel) then
+                    if burner and (inventory_index == defines.inventory.fuel) then
                         local fuel = prototypes.item[item.name]
                         if fuel and fuel.fuel_value then
                             remaining_fuel = remaining_fuel + math.max((fuel.fuel_value / 1e6) * item.count, 0)
@@ -306,6 +293,8 @@ function InventorySensor.load(is_data, force)
             time_to_live = 2,
         }
     end
+
+    section.filters = filters
 
     return true
 end
@@ -365,7 +354,8 @@ function InventorySensor.disconnect(is_data)
     is_data.config.scan_entity_id = nil
     is_data.config.status = nil
 
-    InventorySensor.clear(is_data)
+    local section = InventorySensor.get_section(is_data)
+    section.filters = {}
 
     if Framework.settings:runtime_setting('debug_mode') then
         rendering.draw_rectangle {
