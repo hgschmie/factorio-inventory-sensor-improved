@@ -1,4 +1,3 @@
----@meta
 ------------------------------------------------------------------------
 -- Inventory Sensor GUI
 ------------------------------------------------------------------------
@@ -257,6 +256,8 @@ function Gui.render_preview(gui, is_data)
                 type = 'sprite',
                 style = 'framework_quality',
                 sprite = 'quality/' .. filter.value.quality,
+                resize_to_sprite = false,
+                enabled = true,
             }
         end
     end
