@@ -32,6 +32,7 @@ local function get_gui_event_definition()
             onWindowClosed = Gui.onWindowClosed,
             onSwitchEnabled = Gui.onSwitchEnabled,
             onToggleGridRead = Gui.onToggleGridRead,
+            onToggleGenVirtSignals = Gui.onToggleGenVirtSignals,
         },
         callback = Gui.guiUpdater,
     }
@@ -197,6 +198,13 @@ function Gui.getUi(gui)
                                 state = false,
                             },
                             {
+                                type = 'checkbox',
+                                caption = { const:locale('provide-virtual-signals') },
+                                name = 'provide-virtual-signals',
+                                handler = { [defines.events.on_gui_checked_state_changed] = gui_events.onToggleGenVirtSignals },
+                                state = false,
+                            },
+                            {
                                 type = 'scroll-pane',
                                 style = 'deep_slots_scroll_pane',
                                 direction = 'vertical',
@@ -303,6 +311,17 @@ function Gui.onToggleGridRead(event, gui)
     is_data.config.read_grid = event.element.state
 end
 
+--- Enable / Disable provide virtual signals
+---
+---@param event EventData.on_gui_checked_state_changed
+---@param gui framework.gui
+function Gui.onToggleGenVirtSignals(event, gui)
+    local is_data = This.SensorController:entity(gui.entity_id)
+    if not is_data then return end
+
+    is_data.config.provide_virtual_signals = event.element.state
+end
+
 ----------------------------------------------------------------------------------------------------
 -- GUI state updater
 ----------------------------------------------------------------------------------------------------
@@ -322,6 +341,9 @@ local function update_config_gui_state(gui, is_data)
 
     local read_grid = gui:find_element('read-grid')
     read_grid.state = is_data.config.read_grid or false
+
+    local provide_virtual_signals = gui:find_element('provide-virtual-signals')
+    provide_virtual_signals.state = is_data.config.provide_virtual_signals or false
 
     local inv_status = gui:find_element('inv-status')
     if is_data.config.enabled then
