@@ -321,7 +321,7 @@ function InventorySensor.load(is_data, force)
         local k,v
         for k,v in pairs(workbench) do
             if workbench[k] ~= 0 then
-                sink { value = {type = "virtual",name = "signal-" .. k}, min = v }
+                sink { value = {type = "virtual",name = "signal-" .. k, quality = 'normal' }, min = v }
             end
         end
     end
