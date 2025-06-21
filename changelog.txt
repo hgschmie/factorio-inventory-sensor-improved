@@ -1,8 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.4.3
 Date: ????
-  Bugfixes:
-    - Fix oversized quality icons on non-native displays
   Changes:
     - Add option to provide virtual signals for:
       B (begin of "red bar", blocked slots)
@@ -13,6 +11,7 @@ Date: ????
       P (percent of used space, not recognizing filtered slots or blocked slots)
       T (total slots/size for fluid)
       X (count of filtered slots)
+    - Use native quality rendering
 ---------------------------------------------------------------------------------------------------
 Version: 1.4.2
 Date: 2025-03-15
