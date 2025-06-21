@@ -56,6 +56,7 @@ function InventorySensor.reconfigure(is_data, config)
 
     is_data.config.enabled = config.enabled
     is_data.config.read_grid = config.read_grid
+    is_data.config.provide_virtual_signals = config.provide_virtual_signals
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -82,6 +83,7 @@ function InventorySensor.new(sensor_entity, config)
         config = {
             enabled = true,
             read_grid = false,
+            provide_virtual_signals = false,
             status = sensor_entity.status,
         },
     }
@@ -215,6 +217,9 @@ function InventorySensor.load(is_data, force)
     ---@type LogisticFilter[]
     local filters = {}
 
+    ---@type table<string, number>
+    local workbench = {}
+
     ---@type fun(filter: LogisticFilter)
     local sink = function(filter)
         local signal = filter.value --[[@as SignalFilter]]
@@ -231,14 +236,58 @@ function InventorySensor.load(is_data, force)
     local burner = scan_entity.burner
     local remaining_fuel = 0
 
+    if is_data.config.provide_virtual_signals then
+        -- init data for virtual signal update, maybe a signal mapping would be nice in the future
+        workbench = {
+            -- A=0,
+            B=0, -- begin of red bar, if not used in this inventory, but supported, it is usually t + 1
+            -- C=0,
+            -- D=0, 
+            E=0, -- empty slots	or	remaining space for fluid
+            F=0, -- full slots	or	amount of fluid
+            -- G=0,
+            -- H=0,
+            I=0, -- total item amount
+            -- J=0, 
+            -- K=0,
+            L=0, -- total amount of liquids
+            -- M=0,
+            -- N=0,
+            -- O=0,
+            P=0, -- percent of used slots or fluid
+            -- Q=0,
+            -- R=0, 
+            -- S=0,
+            T=0, -- total slot count or total amount of fluid
+            -- U=0,
+            -- V=0,
+            -- W=0, 
+            X=0, -- filtered slot count
+            -- Z=0
+        }
+    end
     -- load inventories for the entity
     if table_size(is_data.inventories) > 0 then
         for inventory_index in pairs(is_data.inventories) do
             local inventory = scan_entity.get_inventory(inventory_index)
             if inventory and inventory.valid then
+	        if is_data.config.provide_virtual_signals then
+		    workbench.T = #inventory
+		    workbench.E = inventory.count_empty_stacks()
+		    workbench.X = inventory.count_empty_stacks(true) - workbench.E
+		    -- workbench.F = workbench.T - workbench.E - workbench.X
+		    workbench.F = workbench.T - workbench.E
+		    workbench.P = workbench.F * 100  / workbench.T
+		    if inventory.supports_bar() then
+		        workbench.B = inventory.get_bar()
+		        -- local avail_slots = (workbench.T - workbench.B)
+		    end
+                end
                 for _, item in pairs(inventory.get_contents()) do
                     sink { value = { name = item.name, type = 'item', quality = item.quality or 'normal' }, min = item.count }
-
+	            if is_data.config.provide_virtual_signals then
+			workbench.I = workbench.I + item.count	-- accumulate the amount of all items
+		    end
                     if burner and (inventory_index == defines.inventory.fuel) then
                         local fuel = prototypes.item[item.name]
                         if fuel and fuel.fuel_value then
@@ -254,7 +303,26 @@ function InventorySensor.load(is_data, force)
     for i = 1, scan_entity.fluids_count, 1 do
         local fluid = scan_entity.get_fluid(i)
         if fluid then
+	    if is_data.config.provide_virtual_signals then
+                workbench.T = workbench.T + scan_entity.fluidbox.get_capacity(i)
+                workbench.F = workbench.F + fluid.amount
+                workbench.L = workbench.L + fluid.amount
+                if workbench.T then
+                    workbench.P = workbench.F * 100  / workbench.T
+                end
+		workbench.E = workbench.T - workbench.F
+            end
             sink { value = { type = 'fluid', name = fluid.name, quality = 'normal' }, min = math.ceil(fluid.amount) }
+        end
+    end
+
+    -- finally turn the workbench values into signals
+    if is_data.config.provide_virtual_signals then
+        local k,v
+        for k,v in pairs(workbench) do
+            if workbench[k] ~= 0 then
+                sink { value = {type = "virtual",name = "signal-" .. k, quality = 'normal' }, min = v }
+            end
         end
     end
 
