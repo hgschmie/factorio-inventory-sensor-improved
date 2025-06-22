@@ -20,6 +20,31 @@ Uicons by [Flaticon](https://www.flaticon.com/uicons) provided the signal icons
 * supports blueprinting, cloning and settings copying
 * debug mode shows scan area and connect/disconnect events
 
+### Virtual signals about scanned entities
+
+When enabling the `Generate inventory status signals` setting in the GUI, the sensor will create a number of virtual signals that describe the inventories of the connected entity. Note that for entities that have more than inventory (e.g. Assembly Machines), this is a summary across all inventories and not just for a single inventory.
+
+Item specific signals:
+
+* B - slot number for the "red bar" (blocked slots). Note: Only one inventory can have blocked slots
+* E - Sum of all empty slots in the inventories
+* F - Sum of all used slots in the inventories
+* T - Total number of slots in all inventories
+* P - Percentage of slots used (ignoring filtered and blocked slots) across all inventories
+* X - Total number of filtered slots (in inventories that use a filter)
+* I - Total number of items in all inventories
+
+Fluid signals:
+
+Fluids are stored in "fluid boxes" within entities. A fluid box is similar to an item slot except that each fluid box contains only one fluid. For normal use, the number of fluid boxes and fluids is the same. The only exception are entities with recipes where the same fluid is used as input and output.
+
+* D - Number of empty fluid boxes
+* A - Number of fluid boxes that contain fluids
+* C - Total number of fluid boxes
+* V - Total fluid capacity across all fluid boxes
+* L - Total amount of fluid across all fluid boxes
+* Q - Percentage of fluid capacity used
+
 ## Settings
 
 * 'Update interval' controls how often a sensor is updated. Default is every 10 ticks. Changing this value influences the amount of time the mod spends per tick.

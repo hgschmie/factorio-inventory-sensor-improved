@@ -1,17 +1,9 @@
 ---------------------------------------------------------------------------------------------------
-Version: 1.4.3
+Version: 1.5.0
 Date: ????
   Changes:
-    - Add option to provide virtual signals for:
-      B (begin of "red bar", blocked slots)
-      E (emtpy slots/remaining space for fluid)
-      F (filled slots/amount of fluid in inventory)
-      I (total count of items in inventory)
-      L (total amount of liquids in inventory)
-      P (percent of used space, not recognizing filtered slots or blocked slots)
-      T (total slots/size for fluid)
-      X (count of filtered slots)
     - Use native quality rendering
+    - Add virtual signals for inventory information (thanks @fctrusr for a PR!)
 ---------------------------------------------------------------------------------------------------
 Version: 1.4.2
 Date: 2025-03-15

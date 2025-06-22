@@ -141,10 +141,8 @@ local train_type = {
 local assembler_type = {
     interval = scan_frequency.stationary,
     inventories = {
-        defines.inventory.assembling_machine_input,
-        defines.inventory.assembling_machine_output,
-        defines.inventory.furnace_source,
-        defines.inventory.furnace_result,
+        defines.inventory.crafter_input,
+        defines.inventory.crafter_output,
     },
     contribute = read_crafting_progress,
 }
@@ -175,8 +173,8 @@ local roboport_type = {
 local rocketsilo_type = {
     interval = scan_frequency.stationary,
     inventories = {
-        defines.inventory.rocket_silo_input,
-        defines.inventory.rocket_silo_output,
+        defines.inventory.crafter_input,
+        defines.inventory.crafter_output,
         defines.inventory.rocket_silo_rocket,
     },
     contribute = read_silo_progress,

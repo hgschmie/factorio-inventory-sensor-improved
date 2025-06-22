@@ -23,6 +23,7 @@
 ---@field status defines.entity_status
 ---@field scan_entity_id integer?
 ---@field read_grid boolean
+---@field inventory_status boolean
 
 ---@class inventory_sensor.Data
 ---@field sensor_entity LuaEntity
@@ -33,6 +34,21 @@
 ---@field scan_interval integer?
 ---@field scan_time integer?
 ---@field load_time integer?
+
+---@class inventory_sensor.InventoryStatus
+---@field blockedSlotIndex integer?     -- B
+---@field emptySlotCount integer?       -- E
+---@field filledSlotCount integer?      -- F
+---@field totalSlotCount integer?       -- T
+---@field usedSlotPercentage number?    -- P
+---@field filteredSlotCount integer?    -- X
+---@field totalItemCount integer?       -- I
+---@field emptyFluidsCount integer?     -- D
+---@field availableFluidsCount integer? -- A
+---@field totalFluidsCount integer?     -- C
+---@field totalFluidCapacity number?    -- V
+---@field totalFluidAmount number?      -- L
+---@field usedFluidPercentage number?   -- Q
 
 ----------------------------------------------------------------------------------------------------
 -- controller.lua

@@ -56,7 +56,7 @@ function InventorySensor.reconfigure(is_data, config)
 
     is_data.config.enabled = config.enabled
     is_data.config.read_grid = config.read_grid
-    is_data.config.provide_virtual_signals = config.provide_virtual_signals
+    is_data.config.inventory_status = config.inventory_status
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -83,7 +83,7 @@ function InventorySensor.new(sensor_entity, config)
         config = {
             enabled = true,
             read_grid = false,
-            provide_virtual_signals = false,
+            inventory_status = false,
             status = sensor_entity.status,
         },
     }
@@ -217,8 +217,22 @@ function InventorySensor.load(is_data, force)
     ---@type LogisticFilter[]
     local filters = {}
 
-    ---@type table<string, number>
-    local workbench = {}
+    ---@type inventory_sensor.InventoryStatus
+    local totalInventoryStatus = {
+        blockedSlotIndex = 0,
+        emptySlotCount = 0,
+        filledSlotCount = 0,
+        totalSlotCount = 0,
+        usedSlotPercentage = 0,
+        filteredSlotCount = 0,
+        totalItemCount = 0,
+        totalFluidsCount = 0,
+        totalFluidAmount = 0,
+        availableFluidsCount = 0,
+        totalFluidCapacity = 0,
+        usedFluidPercentage = 0,
+        emptyFluidsCount = 0,
+    }
 
     ---@type fun(filter: LogisticFilter)
     local sink = function(filter)
@@ -236,64 +250,44 @@ function InventorySensor.load(is_data, force)
     local burner = scan_entity.burner
     local remaining_fuel = 0
 
-    if is_data.config.provide_virtual_signals then
-        -- init data for virtual signal update, maybe a signal mapping would be nice in the future
-        workbench = {
-            -- A=0,
-            B=0, -- begin of red bar, if not used in this inventory, but supported, it is usually t + 1
-            -- C=0,
-            -- D=0, 
-            E=0, -- empty slots	or	remaining space for fluid
-            F=0, -- full slots	or	amount of fluid
-            -- G=0,
-            -- H=0,
-            I=0, -- total item amount
-            -- J=0, 
-            -- K=0,
-            L=0, -- total amount of liquids
-            -- M=0,
-            -- N=0,
-            -- O=0,
-            P=0, -- percent of used slots or fluid
-            -- Q=0,
-            -- R=0, 
-            -- S=0,
-            T=0, -- total slot count or total amount of fluid
-            -- U=0,
-            -- V=0,
-            -- W=0, 
-            X=0, -- filtered slot count
-            -- Z=0
-        }
-    end
     -- load inventories for the entity
     if table_size(is_data.inventories) > 0 then
         for inventory_index in pairs(is_data.inventories) do
             local inventory = scan_entity.get_inventory(inventory_index)
             if inventory and inventory.valid then
-	        if is_data.config.provide_virtual_signals then
-		    workbench.T = #inventory
-		    workbench.E = inventory.count_empty_stacks()
-		    workbench.X = inventory.count_empty_stacks(true) - workbench.E
-		    -- workbench.F = workbench.T - workbench.E - workbench.X
-		    workbench.F = workbench.T - workbench.E
-		    workbench.P = workbench.F * 100  / workbench.T
-		    if inventory.supports_bar() then
-		        workbench.B = inventory.get_bar()
-		        -- local avail_slots = (workbench.T - workbench.B)
-		    end
+                ---@type inventory_sensor.InventoryStatus
+                local inventoryStatus = {
+                    totalItemCount = 0,
+                }
+
+                if is_data.config.inventory_status then
+                    inventoryStatus.totalSlotCount = #inventory
+                    inventoryStatus.emptySlotCount = inventory.count_empty_stacks()
+                    inventoryStatus.filledSlotCount = inventoryStatus.totalSlotCount - inventoryStatus.emptySlotCount
+                    inventoryStatus.filteredSlotCount = inventory.count_empty_stacks(true) - inventoryStatus.emptySlotCount
+
+                    if inventory.supports_bar() then
+                        inventoryStatus.blockedSlotIndex = (inventory.get_bar() < inventoryStatus.totalSlotCount) and inventory.get_bar() or 0
+                    end
                 end
+
                 for _, item in pairs(inventory.get_contents()) do
                     sink { value = { name = item.name, type = 'item', quality = item.quality or 'normal' }, min = item.count }
-	            if is_data.config.provide_virtual_signals then
-			workbench.I = workbench.I + item.count	-- accumulate the amount of all items
-		    end
+
+                    if is_data.config.inventory_status then
+                        inventoryStatus.totalItemCount = inventoryStatus.totalItemCount + item.count -- accumulate the amount of all items
+                    end
+
                     if burner and (inventory_index == defines.inventory.fuel) then
                         local fuel = prototypes.item[item.name]
                         if fuel and fuel.fuel_value then
                             remaining_fuel = remaining_fuel + math.max((fuel.fuel_value / 1e6) * item.count, 0)
                         end
                     end
+                end
+
+                for k, v in pairs(inventoryStatus) do
+                    totalInventoryStatus[k] = totalInventoryStatus[k] + v
                 end
             end
         end
@@ -302,26 +296,40 @@ function InventorySensor.load(is_data, force)
     -- get fluids
     for i = 1, scan_entity.fluids_count, 1 do
         local fluid = scan_entity.get_fluid(i)
-        if fluid then
-	    if is_data.config.provide_virtual_signals then
-                workbench.T = workbench.T + scan_entity.fluidbox.get_capacity(i)
-                workbench.F = workbench.F + fluid.amount
-                workbench.L = workbench.L + fluid.amount
-                if workbench.T then
-                    workbench.P = workbench.F * 100  / workbench.T
-                end
-		workbench.E = workbench.T - workbench.F
+        if is_data.config.inventory_status then
+            ---@type inventory_sensor.InventoryStatus
+            local fluidStatus = {}
+
+            fluidStatus.totalFluidsCount = (scan_entity.fluidbox.get_capacity(i) > 0) and 1 or 0
+            fluidStatus.availableFluidsCount = fluid and (fluid.amount > 0) and 1 or 0
+            fluidStatus.totalFluidCapacity = scan_entity.fluidbox.get_capacity(i) or 0
+            fluidStatus.totalFluidAmount = fluid and fluid.amount or 0
+            fluidStatus.emptyFluidsCount = fluidStatus.totalFluidsCount - fluidStatus.availableFluidsCount
+
+            for k, v in pairs(fluidStatus) do
+                totalInventoryStatus[k] = totalInventoryStatus[k] + v
             end
-            sink { value = { type = 'fluid', name = fluid.name, quality = 'normal' }, min = math.ceil(fluid.amount) }
+
+            if fluid then
+                sink { value = { type = 'fluid', name = fluid.name, quality = 'normal' }, min = math.ceil(fluid.amount) }
+            end
         end
     end
 
-    -- finally turn the workbench values into signals
-    if is_data.config.provide_virtual_signals then
-        local k,v
-        for k,v in pairs(workbench) do
-            if workbench[k] ~= 0 then
-                sink { value = {type = "virtual",name = "signal-" .. k, quality = 'normal' }, min = v }
+    -- add virtual signals for inventory
+    if is_data.config.inventory_status then
+        if totalInventoryStatus.totalSlotCount ~= 0 then
+            totalInventoryStatus.usedSlotPercentage = totalInventoryStatus.filledSlotCount * 100 / totalInventoryStatus.totalSlotCount
+        end
+
+        if totalInventoryStatus.totalFluidCapacity ~= 0 then
+            totalInventoryStatus.usedFluidPercentage = totalInventoryStatus.totalFluidAmount * 100 / totalInventoryStatus.totalFluidCapacity
+        end
+
+        for signal_name, field_name in pairs(const.inventory_status_signals) do
+            local value = totalInventoryStatus[field_name]
+            if value ~= 0 then
+                sink { value = { type = 'virtual', name = 'signal-' .. signal_name, quality = 'normal' }, min = value }
             end
         end
     end

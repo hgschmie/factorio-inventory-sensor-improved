@@ -32,7 +32,7 @@ local function get_gui_event_definition()
             onWindowClosed = Gui.onWindowClosed,
             onSwitchEnabled = Gui.onSwitchEnabled,
             onToggleGridRead = Gui.onToggleGridRead,
-            onToggleGenVirtSignals = Gui.onToggleGenVirtSignals,
+            onToggleInventoryStatusSignals = Gui.onToggleInventoryStatusSignals,
         },
         callback = Gui.guiUpdater,
     }
@@ -199,9 +199,10 @@ function Gui.getUi(gui)
                             },
                             {
                                 type = 'checkbox',
-                                caption = { const:locale('provide-virtual-signals') },
-                                name = 'provide-virtual-signals',
-                                handler = { [defines.events.on_gui_checked_state_changed] = gui_events.onToggleGenVirtSignals },
+                                caption = { const:locale('inventory-status-signals') },
+                                tooltip = { const:locale('inventory-status-signals-tooltip') },
+                                name = 'inventory-status-signals',
+                                handler = { [defines.events.on_gui_checked_state_changed] = gui_events.onToggleInventoryStatusSignals },
                                 state = false,
                             },
                             {
@@ -307,11 +308,11 @@ end
 ---
 ---@param event EventData.on_gui_checked_state_changed
 ---@param gui framework.gui
-function Gui.onToggleGenVirtSignals(event, gui)
+function Gui.onToggleInventoryStatusSignals(event, gui)
     local is_data = This.SensorController:entity(gui.entity_id)
     if not is_data then return end
 
-    is_data.config.provide_virtual_signals = event.element.state
+    is_data.config.inventory_status = event.element.state
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -334,8 +335,8 @@ local function update_config_gui_state(gui, is_data)
     local read_grid = gui:find_element('read-grid')
     read_grid.state = is_data.config.read_grid or false
 
-    local provide_virtual_signals = gui:find_element('provide-virtual-signals')
-    provide_virtual_signals.state = is_data.config.provide_virtual_signals or false
+    local inventory_status = gui:find_element('inventory-status-signals')
+    inventory_status.state = is_data.config.inventory_status or false
 
     local inv_status = gui:find_element('inv-status')
     if is_data.config.enabled then

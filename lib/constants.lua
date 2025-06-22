@@ -105,6 +105,26 @@ for name, signal in pairs(Constants.signal_names) do
     Constants.signals[name] = { type = 'virtual', name = signal, quality = 'normal' }
 end
 
+Constants.inventory_status_signals = {
+    -- blocked slots
+    B = 'blockedSlotIndex',
+    -- slot counts
+    E = 'emptySlotCount',
+    F = 'filledSlotCount',
+    T = 'totalSlotCount',
+    P = 'usedSlotPercentage',
+    X = 'filteredSlotCount',
+    -- total counts
+    I = 'totalItemCount',
+    -- fluids
+    D = 'emptyFluidsCount',
+    A = 'availableFluidsCount',
+    C = 'totalFluidsCount',
+    V = 'totalFluidCapacity',
+    L = 'totalFluidAmount',
+    Q = 'usedFluidPercentage',
+}
+
 --------------------------------------------------------------------------------
 -- settings
 --------------------------------------------------------------------------------
