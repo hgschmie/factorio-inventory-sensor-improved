@@ -36,14 +36,16 @@ Item specific signals:
 
 Fluid signals:
 
-Fluids are stored in "fluid boxes" within entities. A fluid box is similar to an item slot except that each fluid box contains only one fluid. For normal use, the number of fluid boxes and fluids is the same. The only exception are entities with recipes where the same fluid is used as input and output.
+Display information about fluids in an entity.
 
-* D - Number of empty fluid boxes
-* A - Number of fluid boxes that contain fluids
-* C - Total number of fluid boxes
-* V - Total fluid capacity across all fluid boxes
-* L - Total amount of fluid across all fluid boxes
+* A - Number of fluids in the entity
+* L - Total amount of fluid in the entity
+* D - Number of empty fluids (empty fluid boxes for entities that use fluid boxes, otherwise 1 if the entity contains no fluid)
+* C - Total number of fluids supported by the entity
+* V - Total fluid capacity across all fluids
 * Q - Percentage of fluid capacity used
+
+When an entity uses fluid boxes and has the same fluid for input and output, the count may be off.
 
 ## Settings
 

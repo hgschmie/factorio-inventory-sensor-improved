@@ -299,12 +299,20 @@ function InventorySensor.load(is_data, force)
         if is_data.config.inventory_status then
             ---@type inventory_sensor.InventoryStatus
             local fluidStatus = {}
-
-            fluidStatus.totalFluidsCount = (scan_entity.fluidbox.get_capacity(i) > 0) and 1 or 0
             fluidStatus.availableFluidsCount = fluid and (fluid.amount > 0) and 1 or 0
-            fluidStatus.totalFluidCapacity = scan_entity.fluidbox.get_capacity(i) or 0
             fluidStatus.totalFluidAmount = fluid and fluid.amount or 0
-            fluidStatus.emptyFluidsCount = fluidStatus.totalFluidsCount - fluidStatus.availableFluidsCount
+            local entity_capacity = scan_entity.prototype.get_fluid_capacity()
+            if entity_capacity > 0 then
+                fluidStatus.totalFluidsCount = 1
+                fluidStatus.totalFluidCapacity = entity_capacity
+                fluidStatus.emptyFluidsCount = fluidStatus.totalFluidsCount - fluidStatus.availableFluidsCount
+            end
+
+            if scan_entity.fluidbox and (#scan_entity.fluidbox >= i) then
+                fluidStatus.totalFluidsCount = (scan_entity.fluidbox.get_capacity(i) > 0) and 1 or 0
+                fluidStatus.totalFluidCapacity = scan_entity.fluidbox.get_capacity(i) or 0
+                fluidStatus.emptyFluidsCount = fluidStatus.totalFluidsCount - fluidStatus.availableFluidsCount
+            end
 
             for k, v in pairs(fluidStatus) do
                 totalInventoryStatus[k] = totalInventoryStatus[k] + v
