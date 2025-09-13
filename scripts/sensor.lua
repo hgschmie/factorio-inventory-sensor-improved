@@ -150,7 +150,7 @@ function InventorySensor.scan(is_data, force)
         -- already exists, use that
         is_data.scan_area = (not force) and is_data.scan_area or InventorySensor.create_scan_area(is_data)
 
-        if Framework.settings:runtime_setting('debug_mode') then
+        if Framework.settings:startup_setting('debug_mode') then
             rendering.draw_rectangle {
                 color = { r = 0.5, g = 0.5, b = 1 },
                 surface = is_data.sensor_entity.surface,
@@ -368,7 +368,7 @@ function InventorySensor.load(is_data, force)
         sink { value = const.signals.fuel_signal, min = math.min(math.floor(remaining_fuel + 0.5), 2 ^ 31 - 1) }
     end
 
-    if Framework.settings:runtime_setting('debug_mode') then
+    if Framework.settings:startup_setting('debug_mode') then
         rendering.draw_rectangle {
             color = { r = 1, g = 1, b = 0.3 },
             surface = is_data.sensor_entity.surface,
@@ -412,7 +412,7 @@ function InventorySensor.connect(is_data, entity)
 
     InventorySensor.load(is_data, true)
 
-    if Framework.settings:runtime_setting('debug_mode') then
+    if Framework.settings:startup_setting('debug_mode') then
         rendering.draw_rectangle {
             color = { r = 0.3, g = 1, b = 0.3 },
             surface = is_data.sensor_entity.surface,
@@ -441,7 +441,7 @@ function InventorySensor.disconnect(is_data)
     local section = InventorySensor.get_section(is_data)
     section.filters = {}
 
-    if Framework.settings:runtime_setting('debug_mode') then
+    if Framework.settings:startup_setting('debug_mode') then
         rendering.draw_rectangle {
             color = { r = 1, g = 0.3, b = 0.3 },
             surface = is_data.sensor_entity.surface,

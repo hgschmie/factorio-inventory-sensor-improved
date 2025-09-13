@@ -193,7 +193,7 @@ local function register_events()
     Event.register(defines.events.on_player_rotated_entity, onEntityMoved, fi_entity_filter)
 
     -- Manage blueprint configuration setting
-    Framework.blueprint:registerCallback(const.inventory_sensor_name, This.SensorController.serialize_config)
+    Framework.blueprint:registerCallbackForNames(const.inventory_sensor_name, This.SensorController.serialize_config)
 
     Framework.ghost_manager:registerForName(const.inventory_sensor_name)
 
