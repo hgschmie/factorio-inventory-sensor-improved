@@ -5,7 +5,6 @@
 -- can be loaded into scripts and data
 ------------------------------------------------------------------------
 
-local Area = require('stdlib.area.area')
 local table = require('stdlib.utils.table')
 
 --------------------------------------------------------------------------------
@@ -79,13 +78,6 @@ end
 
 -- Base name
 Constants.inventory_sensor_name = Constants:with_prefix(Constants.name)
-
-Constants.normalized_area = {
-    [defines.direction.north] = Area.normalize { left_top = { x = -1, y = 1 }, right_bottom = { x = 1, y = 0 }, },
-    [defines.direction.east] = Area.normalize { left_top = { x = -1, y = 1 }, right_bottom = { x = 0, y = -1 }, },
-    [defines.direction.south] = Area.normalize { left_top = { x = -1, y = 0 }, right_bottom = { x = 1, y = -1 }, },
-    [defines.direction.west] = Area.normalize { left_top = { x = 0, y = 1 }, right_bottom = { x = 1, y = -1 }, },
-}
 
 Constants.signal_names = {
     progress_signal = 'inv-sensor-progress',
