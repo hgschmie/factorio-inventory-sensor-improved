@@ -9,7 +9,7 @@ data:extend {
         order = 'aa',
         setting_type = 'runtime-global',
         default_value = 10,
-        minimum_value = 1,
+        minimum_value = 5,
         maximum_value = 216000, -- 1h
     },
     {
@@ -18,7 +18,7 @@ data:extend {
         order = 'ab',
         setting_type = 'runtime-global',
         default_value = 120,
-        minimum_value = 1,
+        minimum_value = 5,
         maximum_value = 216000, -- 1h
     },
     {

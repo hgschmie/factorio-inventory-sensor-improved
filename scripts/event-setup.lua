@@ -1,11 +1,9 @@
----@meta
 --------------------------------------------------------------------------------
 -- event setup for the mod
 --------------------------------------------------------------------------------
 assert(script)
 
 local Event = require('stdlib.event.event')
-local Is = require('stdlib.utils.is')
 local Player = require('stdlib.event.player')
 
 local Matchers = require('framework.matchers')
@@ -13,7 +11,7 @@ local Matchers = require('framework.matchers')
 local const = require('lib.constants')
 
 local Sensor = require('scripts.sensor')
-local migration = require('scripts.migration')
+local Migration = require('scripts.migration')
 
 --------------------------------------------------------------------------------
 -- entity create / delete
@@ -25,7 +23,7 @@ local function onEntityCreated(event)
 
     assert(entity)
 
-    if not Is.Valid(entity) then return end
+    if not (entity and entity.valid) then return end
 
     -- register entity for destruction
     script.register_on_object_destroyed(entity)
@@ -67,7 +65,7 @@ end
 
 local function onEntityMoved(event)
     local entity = event and event.entity
-    if not Is.Valid(entity) then return end
+    if not (entity and entity.valid) then return end
     This.SensorController:move(entity.unit_number)
 end
 
@@ -79,7 +77,7 @@ end
 local function onEntitySettingsPasted(event)
     local player = Player.get(event.player_index)
 
-    if not (Is.Valid(player) and player.force == event.source.force and player.force == event.destination.force) then return end
+    if not (player and player.valid and player.force == event.source.force and player.force == event.destination.force) then return end
 
     local src_entity = This.SensorController:entity(event.source.unit_number)
     local dst_entity = This.SensorController:entity(event.destination.unit_number)
@@ -95,8 +93,7 @@ end
 
 ---@param event EventData.on_entity_cloned
 local function onEntityCloned(event)
-    -- Space Exploration Support
-    if not (Is.Valid(event.source) and Is.Valid(event.destination)) then return end
+    if not (event.source and event.source.valid and event.destination and event.destination.valid) then return end
 
     local src_data = This.SensorController:entity(event.source.unit_number)
     if not src_data then return end
@@ -121,8 +118,8 @@ local function onConfigurationChanged()
     if Framework.settings:startup_setting(const.settings_update_inventory_sensors_name) then
         assert(migration)
 
-        migration:migrateSensors()
-        migration:migrateBlueprints()
+        Migration:migrateSensors()
+        Migration:migrateBlueprints()
 
         -- disconnect all entities, have them reconnect; this resets the config state of all entities
         for _, entity in pairs(This.SensorController:entities()) do
@@ -145,29 +142,18 @@ local function onTick()
     if table_size(entities) == 0 then
         index = nil
     else
-        local destroy_list = {}
         repeat
             index, entity = next(entities, index)
             if entity and entity.sensor_entity and entity.sensor_entity.valid then
                 if Sensor.tick(entity) then
                     process_count = process_count - 1
                 end
-            else
-                table.insert(destroy_list, index)
+            elseif index then
+                This.SensorController:destroy(index)
             end
         until process_count == 0 or not index
-
-        if table_size(destroy_list) then
-            for _, unit_id in pairs(destroy_list) do
-                This.SensorController:destroy(unit_id)
-
-                -- if the last index was destroyed, reset the scan loop index
-                if unit_id == index then
-                    index = nil
-                end
-            end
-        end
     end
+
     storage.last_tick_entity = index
 end
 

@@ -279,8 +279,25 @@ end
 function FrameworkGui:remove_children(name)
     local ui_element = self:find_element(name)
 
+    return self:remove_ui_elements(ui_element)
+end
+
+---@param ui_element LuaGuiElement?
+function FrameworkGui:remove_ui_elements(ui_element)
     if ui_element then
         local child_names = util.copy(ui_element.children_names)
+        if #child_names > 0 then
+            for _, child_name in pairs(child_names) do
+                if self.ui_elements[child_name] then
+                    self:remove_ui_elements(self.ui_elements[child_name])
+                end
+                for _, event_handlers in pairs(self.event_handlers) do
+                    if table_size(event_handlers) > 0 then
+                        event_handlers[child_name] = nil
+                    end
+                end
+            end
+        end
         ui_element.clear()
         table.remove_keys(self.ui_elements, child_names)
     end

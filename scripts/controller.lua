@@ -1,10 +1,7 @@
----@meta
 ------------------------------------------------------------------------
 -- Inventory Sensor main code
 ------------------------------------------------------------------------
 assert(script)
-
-local Is = require('stdlib.utils.is')
 
 local const = require('lib.constants')
 
@@ -12,7 +9,7 @@ local Sensor = require('scripts.sensor')
 
 ------------------------------------------------------------------------
 
----@class InventorySensorController
+---@class inventory_sensor.Controller
 local InventorySensorController = {}
 
 ------------------------------------------------------------------------
@@ -24,8 +21,7 @@ function InventorySensorController:init()
     storage.is_data = storage.is_data or {
         is = {},
         count = 0,
-        VERSION = const.current_version,
-    } --[[@as inventory_sensor.Storage ]]
+    }
 end
 
 ------------------------------------------------------------------------
@@ -53,17 +49,14 @@ end
 
 --- Sets or clears a inventory sensor entity
 ---@param entity_id integer The unit_number of the primary
----@param is_data inventory_sensor.Data?
-function InventorySensorController:setEntity(entity_id, is_data)
-    assert((is_data ~= nil and storage.is_data.is[entity_id] == nil)
-        or (is_data == nil and storage.is_data.is[entity_id] ~= nil))
+---@param sensor_data inventory_sensor.Data?
+function InventorySensorController:setEntity(entity_id, sensor_data)
+    assert((sensor_data ~= nil and storage.is_data.is[entity_id] == nil) or sensor_data == nil)
 
-    if (is_data) then
-        assert(Sensor.validate(is_data, entity_id))
-    end
+    if (sensor_data) then assert(Sensor.validate(sensor_data, entity_id)) end
 
-    storage.is_data.is[entity_id] = is_data
-    storage.is_data.count = storage.is_data.count + ((is_data and 1) or -1)
+    storage.is_data.is[entity_id] = sensor_data
+    storage.is_data.count = storage.is_data.count + ((sensor_data and 1) or -1)
 
     if storage.is_data.count < 0 then
         storage.is_data.count = table_size(storage.is_data.is)
@@ -80,11 +73,11 @@ end
 function InventorySensorController:create(main_entity, config)
     main_entity.rotatable = true
 
-    local is_data = Sensor.new(main_entity, config)
-    self:setEntity(main_entity.unit_number, is_data)
+    local sensor_data = Sensor.new(main_entity, config)
+    self:setEntity(main_entity.unit_number, sensor_data)
 
     -- initial scan when created
-    Sensor.scan(is_data)
+    Sensor.scan(sensor_data)
 end
 
 ------------------------------------------------------------------------
@@ -93,10 +86,12 @@ end
 
 --@param unit_number integer
 function InventorySensorController:destroy(unit_number)
-    local is_data = self:entity(unit_number)
-    if not is_data then return end
+    assert(unit_number)
 
-    Sensor.destroy(is_data)
+    local sensor_data = self:entity(unit_number)
+    if not sensor_data then return end
+
+    Sensor.destroy(sensor_data)
     self:setEntity(unit_number, nil)
 end
 
@@ -106,10 +101,10 @@ end
 
 --@param unit_number integer
 function InventorySensorController:move(unit_number)
-    local is_data = self:entity(unit_number)
-    if not is_data then return end
+    local sensor_data = self:entity(unit_number)
+    if not sensor_data then return end
 
-    Sensor.scan(is_data, true)
+    Sensor.scan(sensor_data, true)
 end
 
 --------------------------------------------------------------------------------
@@ -119,13 +114,13 @@ end
 ---@param entity LuaEntity
 ---@return table<string, any>?
 function InventorySensorController.serialize_config(entity)
-    if not Is.Valid(entity) then return end
+    if not (entity and entity.valid) then return end
 
-    local is_data = This.SensorController:entity(entity.unit_number)
-    if not is_data then return end
+    local sensor_data = This.SensorController:entity(entity.unit_number)
+    if not sensor_data then return end
 
     return {
-        [const.config_tag_name] = is_data.config,
+        [const.config_tag_name] = sensor_data.config,
     }
 end
 

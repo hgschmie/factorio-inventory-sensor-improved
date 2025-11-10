@@ -11,24 +11,41 @@
 -- sensor.lua
 ----------------------------------------------------------------------------------------------------
 
----@class ISDataController
----@field interval scan_frequency
----@field inventories defines.inventory[]
----@field validate (fun(entity: inventory_sensor.Data): boolean)?
----@field contribute (fun(is_data: inventory_sensor.Data, sink: fun(filter: LogisticFilter)))?
----@field signals table<string, integer>?
+---@alias inventory_sensor.Contributor fun(sensor_data: inventory_sensor.Data, sink: fun(filter: LogisticFilter))
+
+---@alias inventory_sensor.TypeMode 'one'|'quantity'
+
+---@class inventory_sensor.ContributorInfo
+---@field enabled boolean?
+---@field name LocalisedString
+---@field mode inventory_sensor.TypeMode?
+---@field inverted boolean?
+
+---@class inventory_sensor.ScanTemplate
+---@field interval scan_frequency Scan frequency
+---@field validate (fun(entity: LuaEntity): boolean)? validation function, whether the given entity can be read
+---@field inventories (table<defines.inventory, LocalisedString>)? Inventory to name
+---@field contributors (table<string, boolean>)? Additional contributors
+---@field signals (string[])?
+---@field primary defines.inventory? Primary Inventory, enable by default
 
 ---@class inventory_sensor.Config
 ---@field enabled boolean
----@field status defines.entity_status
 ---@field scan_entity_id integer?
+---@field contributors table<string, inventory_sensor.ContributorInfo> List of activated contributors in the GUI
 ---@field read_grid boolean
 ---@field inventory_status boolean
 
+---@class inventory_sensor.State
+---@field status defines.entity_status
+---@field contributors table<string, inventory_sensor.ContributorInfo> List of all available contributors. Updated when the entity changes
+---@field reset_on_connect boolean
+---@field reconnect_key string?
+
 ---@class inventory_sensor.Data
 ---@field sensor_entity LuaEntity
----@field inventories table<defines.inventory, true>
 ---@field config inventory_sensor.Config
+---@field state inventory_sensor.State
 ---@field scan_area BoundingBox?
 ---@field scan_entity LuaEntity?
 ---@field scan_interval integer?
@@ -57,11 +74,11 @@
 ---@class inventory_sensor.Storage
 ---@field is inventory_sensor.Data[]
 ---@field count integer
----@field VERSION integer
 
 ----------------------------------------------------------------------------------------------------
 -- supported_entities.lua
 ----------------------------------------------------------------------------------------------------
----@class ISSupportedEntities
----@field supported_entities table<string, ISDataController>
+---@class inventory_sensor.SupportedEntities
+---@field supported_entities table<string, table<string, inventory_sensor.ScanTemplate>>
+---@field contributors table<string, inventory_sensor.Contributor>
 ---@field blacklist table<string, string>

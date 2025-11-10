@@ -1,17 +1,16 @@
 --------------------------------------------------------------------------------
+-- Support for moving inventory sensors through
 -- Even Pickier Dollies (https://mods.factorio.com/mod/even-pickier-dollies)
--- and Picker Dollies (https://mods.factorio.com/mod/PickerDollies) support
 --------------------------------------------------------------------------------
 
 local const = require('lib.constants')
-local Is = require('stdlib.utils.is')
 
 local PickerDolliesSupport = {}
 
 --------------------------------------------------------------------------------
 
 local function picker_dollies_moved(event)
-    if not Is.Valid(event.moved_entity) then return end
+    if not (event.moved_entity and event.moved_entity.valid) then return end
     if event.moved_entity.name ~= const.inventory_sensor_name then return end
 
     This.SensorController:move(event.moved_entity.unit_number)

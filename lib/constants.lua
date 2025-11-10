@@ -1,4 +1,3 @@
----@meta
 ------------------------------------------------------------------------
 -- mod constant definitions.
 --
@@ -23,9 +22,6 @@ local Constants = {}
 --------------------------------------------------------------------------------
 -- main constants
 --------------------------------------------------------------------------------
-
--- the current version that is the result of the latest migration
-Constants.current_version = 1
 
 Constants.prefix = 'hps__is-'
 Constants.name = 'inventory-sensor'
@@ -116,6 +112,33 @@ Constants.inventory_status_signals = {
     L = 'totalFluidAmount',
     Q = 'usedFluidPercentage',
 }
+
+--------------------------------------------------------------------------------
+-- locale
+--------------------------------------------------------------------------------
+
+---@type table<integer, string>
+Constants.inventory = table.invert(defines.inventory)
+
+---@type table<string, LocalisedString>
+Constants.inventories = {}
+
+for _, name in pairs {
+    'charge', 'crafting_progress', 'grid', 'research_progress', 'silo_progress',
+    'contents', 'ammo', 'trash', 'cargo', 'input', 'output', 'modules', 'dump',
+} do
+    Constants.inventories[name] = { Constants:locale('inventory-name-' .. name) }
+end
+
+for name in pairs(defines.inventory) do
+    Constants.inventories[name] = { Constants:locale('inventory-name-' .. name) }
+end
+
+---@type table<string, string>
+Constants.inventory_names = {}
+for key in pairs(Constants.inventories) do
+    Constants.inventory_names[key] = key
+end
 
 --------------------------------------------------------------------------------
 -- settings

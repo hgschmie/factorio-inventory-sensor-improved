@@ -5,7 +5,6 @@ assert(script)
 
 local Event = require('stdlib.event.event')
 local Player = require('stdlib.event.player')
-local Is = require('stdlib.utils.is')
 local table = require('stdlib.utils.table')
 
 local tools = require('framework.tools')
@@ -16,7 +15,9 @@ local const = require('lib.constants')
 
 local Sensor = require('scripts.sensor')
 
----@class InventorySensorGui
+local GUI_NAME = 'inventory-sensor-gui'
+
+---@class inventory_sensor.Gui
 local Gui = {}
 
 ----------------------------------------------------------------------------------------------------
@@ -33,6 +34,9 @@ local function get_gui_event_definition()
             onSwitchEnabled = Gui.onSwitchEnabled,
             onToggleGridRead = Gui.onToggleGridRead,
             onToggleInventoryStatusSignals = Gui.onToggleInventoryStatusSignals,
+            onToggleInventorySelect = Gui.onToggleInventorySelect,
+            onToggleChangeRequestMode = Gui.onToggleChangeRequestMode,
+            onToggleRequestInvert = Gui.onToggleRequestInvert,
         },
         callback = Gui.guiUpdater,
     }
@@ -44,8 +48,8 @@ end
 function Gui.getUi(gui)
     local gui_events = gui.gui_events
 
-    local is_data = This.SensorController:entity(gui.entity_id)
-    assert(is_data)
+    local sensor_data = This.SensorController:entity(gui.entity_id)
+    assert(sensor_data)
 
     return {
         type = 'frame',
@@ -126,13 +130,13 @@ function Gui.getUi(gui)
                                 children = {
                                     {
                                         type = 'sprite',
-                                        name = 'lamp',
+                                        name = 'entity-lamp',
                                         style = 'framework_indicator',
                                     },
                                     {
                                         type = 'label',
                                         style = 'label',
-                                        name = 'status',
+                                        name = 'entity-status',
                                     },
                                     {
                                         type = 'empty-widget',
@@ -141,7 +145,7 @@ function Gui.getUi(gui)
                                     {
                                         type = 'label',
                                         style = 'label',
-                                        caption = 'ID: ' .. is_data.sensor_entity.unit_number,
+                                        caption = { const:locale('id'), sensor_data.sensor_entity.unit_number },
                                     },
                                 },
                             },
@@ -154,7 +158,7 @@ function Gui.getUi(gui)
                                         type = 'entity-preview',
                                         name = 'preview',
                                         style = 'wide_entity_button',
-                                        elem_mods = { entity = is_data.sensor_entity },
+                                        elem_mods = { entity = sensor_data.sensor_entity },
                                     },
                                 },
                             },
@@ -177,17 +181,34 @@ function Gui.getUi(gui)
                                     {
                                         type = 'label',
                                         style = 'semibold_label',
-                                        caption = { const:locale('inv-status-label') },
+                                        caption = { const:locale('status-label') },
                                     },
                                     {
                                         type = 'label',
                                         style = 'label',
-                                        name = 'inv-status',
+                                        name = 'status',
                                     },
                                     {
                                         type = 'empty-widget',
                                         style_mods = { horizontally_stretchable = true },
                                     },
+                                },
+                            },
+                            {
+                                type = 'line',
+                            },
+                            {
+                                type = 'label',
+                                style = 'semibold_label',
+                                caption = { const:locale('inventories-heading') },
+                            },
+                            {
+                                type = 'table',
+                                name = 'inventories',
+                                column_count = 3,
+                                style_mods = {
+                                    top_margin = -8,         -- pull the table a bit closer to the label above
+                                    horizontal_spacing = 24, -- space the elements in the table out
                                 },
                             },
                             {
@@ -241,15 +262,15 @@ end
 ----------------------------------------------------------------------------------------------------
 
 ---@param gui framework.gui
----@param is_data inventory_sensor.Data?
-function Gui.render_preview(gui, is_data)
-    if not is_data then return end
+---@param sensor_data inventory_sensor.Data?
+function Gui.render_preview(gui, sensor_data)
+    if not sensor_data then return end
 
     local signal_view = gui:find_element('signal-view')
     assert(signal_view)
 
     signal_view.clear()
-    local section = Sensor.get_section(is_data)
+    local section = Sensor.get_section(sensor_data)
 
     for _, filter in pairs(section.filters) do
         local button = signal_view.add {
@@ -287,10 +308,10 @@ local values_on_off = table.invert(on_off_values)
 ---@param event EventData.on_gui_switch_state_changed
 ---@param gui framework.gui
 function Gui.onSwitchEnabled(event, gui)
-    local is_data = This.SensorController:entity(gui.entity_id)
-    if not is_data then return end
+    local sensor_data = This.SensorController:entity(gui.entity_id)
+    if not sensor_data then return end
 
-    is_data.config.enabled = on_off_values[event.element.switch_state]
+    sensor_data.config.enabled = on_off_values[event.element.switch_state]
 end
 
 --- Enable / Disable reading grid
@@ -298,10 +319,10 @@ end
 ---@param event EventData.on_gui_checked_state_changed
 ---@param gui framework.gui
 function Gui.onToggleGridRead(event, gui)
-    local is_data = This.SensorController:entity(gui.entity_id)
-    if not is_data then return end
+    local sensor_data = This.SensorController:entity(gui.entity_id)
+    if not sensor_data then return end
 
-    is_data.config.read_grid = event.element.state
+    sensor_data.config.read_grid = event.element.state
 end
 
 --- Enable / Disable provide virtual signals
@@ -309,10 +330,40 @@ end
 ---@param event EventData.on_gui_checked_state_changed
 ---@param gui framework.gui
 function Gui.onToggleInventoryStatusSignals(event, gui)
-    local is_data = This.SensorController:entity(gui.entity_id)
-    if not is_data then return end
+    local sensor_data = This.SensorController:entity(gui.entity_id)
+    if not sensor_data then return end
 
-    is_data.config.inventory_status = event.element.state
+    sensor_data.config.inventory_status = event.element.state
+end
+
+---@param event EventData.on_gui_checked_state_changed
+---@param gui framework.gui
+function Gui.onToggleInventorySelect(event, gui)
+    local sensor_data = This.SensorController:entity(gui.entity_id)
+    if not sensor_data then return end
+
+    local selected = assert(sensor_data.config.contributors[event.element.tags.inventory_name])
+    selected.enabled = event.element.state
+end
+
+---@param event EventData.on_gui_checked_state_changed
+---@param gui framework.gui
+function Gui.onToggleChangeRequestMode(event, gui)
+    local sensor_data = This.SensorController:entity(gui.entity_id)
+    if not sensor_data then return end
+
+    local selected = assert(sensor_data.config.contributors[event.element.tags.inventory_name])
+    if event.element.state then selected.mode = assert(event.element.tags.report_state) end
+end
+
+---@param event EventData.on_gui_checked_state_changed
+---@param gui framework.gui
+function Gui.onToggleRequestInvert(event, gui)
+    local sensor_data = This.SensorController:entity(gui.entity_id)
+    if not sensor_data then return end
+
+    local selected = assert(sensor_data.config.contributors[event.element.tags.inventory_name])
+    selected.inverted = event.element.state
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -320,49 +371,115 @@ end
 ----------------------------------------------------------------------------------------------------
 
 ---@param gui framework.gui
----@param is_data inventory_sensor.Data
-local function update_config_gui_state(gui, is_data)
-    local entity_status = (not is_data.config.enabled) and defines.entity_status.disabled -- if not enabled, status is disabled
-        or is_data.config.status                                                          -- if enabled, the registered state takes precedence if present
-        or defines.entity_status.working                                                  -- otherwise, it is working
+---@param sensor_data inventory_sensor.Data
+local function update_config_gui_state(gui, sensor_data)
+    local sensor_status = (not sensor_data.config.enabled) and defines.entity_status.disabled -- if not enabled, status is disabled
+        or sensor_data.state.status                                                           -- if enabled, the registered state takes precedence if present
+        or defines.entity_status.working                                                      -- otherwise, it is working
 
-    local lamp = gui:find_element('lamp')
-    lamp.sprite = tools.STATUS_SPRITES[entity_status]
+    local entity_lamp = gui:find_element('entity-lamp')
+    entity_lamp.sprite = tools.STATUS_SPRITES[sensor_status]
 
-    local status = gui:find_element('status')
-    status.caption = { tools.STATUS_NAMES[entity_status] }
+    local entity_status = gui:find_element('entity-status')
+    entity_status.caption = { tools.STATUS_NAMES[sensor_status] }
 
     local read_grid = gui:find_element('read-grid')
-    read_grid.state = is_data.config.read_grid or false
+    read_grid.state = sensor_data.config.read_grid or false
 
     local inventory_status = gui:find_element('inventory-status-signals')
-    inventory_status.state = is_data.config.inventory_status or false
+    inventory_status.state = sensor_data.config.inventory_status or false
 
-    local inv_status = gui:find_element('inv-status')
-    if is_data.config.enabled then
-        if Is.Valid(is_data.scan_entity) then
-            inv_status.caption = { const:locale('reading'), is_data.scan_entity.localised_name }
+    local status = gui:find_element('status')
+    if sensor_data.config.enabled then
+        if (sensor_data.scan_entity and sensor_data.scan_entity.valid) then
+            status.caption = { const:locale('reading'), sensor_data.scan_entity.localised_name, sensor_data.scan_entity.unit_number }
         else
-            inv_status.caption = { const:locale('scanning') }
+            status.caption = { const:locale('scanning') }
         end
     else
-        inv_status.caption = { const:locale('disabled') }
+        status.caption = { const:locale('disabled') }
     end
 
-    local enabled = is_data.config.enabled
+    local enabled = sensor_data.config.enabled
     local on_off = gui:find_element('on-off')
     on_off.switch_state = values_on_off[enabled]
+
+    -- update inventories
+
+    local inventory_element = assert(gui:find_element('inventories'))
+    gui:remove_children('inventories')
+
+    for name, contributor_info in pairs(sensor_data.state.contributors) do
+        -- state contributor must be false, otherwise it is permanently enabled and
+        -- can not be controlled through the gui (e.g. progress contributors)
+        if not contributor_info.enabled then
+            local inventory_config = assert(sensor_data.config.contributors[name])
+
+            -- each row has three children: checkbox, radiobuttons and invert
+            gui:add_child_elements(inventory_element, {
+                {
+                    type = 'checkbox',
+                    caption = contributor_info.name,
+                    name = name .. '-select',
+                    elem_tags = { inventory_name = name },
+                    handler = { [defines.events.on_gui_checked_state_changed] = gui.gui_events.onToggleInventorySelect },
+                    state = inventory_config.enabled,
+                },
+                {
+                    type = 'flow',
+                    direction = 'vertical',
+                    children = {
+                        {
+                            type = 'radiobutton',
+                            caption = { '', { const:locale('report-quantity') }, ' [img=info]' },
+                            tooltip = { const:locale('report-quantity-description') },
+                            name = name .. '-quantity',
+                            elem_tags = {
+                                inventory_name = name,
+                                report_state = 'quantity',
+                            },
+                            handler = { [defines.events.on_gui_checked_state_changed] = gui.gui_events.onToggleChangeRequestMode },
+                            enabled = inventory_config.enabled,
+                            state = enabled and inventory_config.mode == 'quantity',
+                        },
+                        {
+                            type = 'radiobutton',
+                            caption = { const:locale('report-one') },
+                            name = name .. '-one',
+                            elem_tags = {
+                                inventory_name = name,
+                                report_state = 'one',
+                            },
+                            handler = { [defines.events.on_gui_checked_state_changed] = gui.gui_events.onToggleChangeRequestMode },
+                            enabled = inventory_config.enabled,
+                            state = enabled and inventory_config.mode == 'one',
+                        },
+                    }
+                },
+                {
+                    type = 'checkbox',
+                    caption = { '', { const:locale('report-invert') }, ' [img=info]' },
+                    tooltip = { const:locale('report-invert-description') },
+                    name = name .. '-invert',
+                    elem_tags = { inventory_name = name, },
+                    handler = { [defines.events.on_gui_checked_state_changed] = gui.gui_events.onToggleRequestInvert },
+                    enabled = inventory_config.enabled,
+                    state = enabled and inventory_config.inverted or false,
+                },
+            })
+        end
+    end
 end
 
 ---@param gui framework.gui
----@param is_data inventory_sensor.Data
-local function update_gui_state(gui, is_data)
-    Gui.render_preview(gui, is_data)
+---@param sensor_data inventory_sensor.Data
+local function update_gui_state(gui, sensor_data)
+    Gui.render_preview(gui, sensor_data)
 
     local connections = gui:find_element('connections')
     connections.caption = { 'gui-control-behavior.not-connected' }
     for _, color in pairs { 'red', 'green' } do
-        local wire_connector = is_data.sensor_entity.get_wire_connector(defines.wire_connector_id['circuit_' .. color], false)
+        local wire_connector = sensor_data.sensor_entity.get_wire_connector(defines.wire_connector_id['circuit_' .. color], false)
 
         local wire_connection = gui:find_element('connection-' .. color)
         if wire_connector and wire_connector.connection_count > 0 then
@@ -383,19 +500,21 @@ end
 ---@param gui framework.gui
 ---@return boolean
 function Gui.guiUpdater(gui)
-    local is_data = This.SensorController:entity(gui.entity_id)
-    if not is_data then return false end
+    local sensor_data = This.SensorController:entity(gui.entity_id)
+    if not sensor_data then return false end
 
     ---@type inventory_sensor.GuiContext
     local context = gui.context
 
-    if not (context.last_config and table.compare(context.last_config, is_data.config)) then
-        update_config_gui_state(gui, is_data)
-        context.last_config = tools.copy(is_data.config)
+    if not (context.last_config and table.compare(context.last_config, sensor_data.config))
+        or not (context.last_state and table.compare(context.last_state, sensor_data.state)) then
+        update_config_gui_state(gui, sensor_data)
+        context.last_config = util.copy(sensor_data.config)
+        context.last_state = util.copy(sensor_data.state)
     end
 
     -- always update wire state and preview
-    update_gui_state(gui, is_data)
+    update_gui_state(gui, sensor_data)
 
     return true
 end
@@ -419,9 +538,9 @@ function Gui.onGuiOpened(event)
     end
 
     assert(entity.unit_number)
-    local is_data = This.SensorController:entity(entity.unit_number)
+    local sensor_data = This.SensorController:entity(entity.unit_number)
 
-    if not is_data then
+    if not sensor_data then
         log('Data missing for ' ..
             event.entity.name .. ' on ' .. event.entity.surface.name .. ' at ' .. serpent.line(event.entity.position) .. ' refusing to display UI')
         player.opened = nil
@@ -430,12 +549,14 @@ function Gui.onGuiOpened(event)
 
     ---@class inventory_sensor.GuiContext
     ---@field last_config inventory_sensor.Config?
+    ---@field last_state inventory_sensor.State?
     local gui_state = {
         last_config = nil,
+        last_state = nil,
     }
 
     local gui = Framework.gui_manager:create_gui {
-        type = 'combinator-gui',
+        type = GUI_NAME,
         player_index = event.player_index,
         parent = player.gui.screen,
         ui_tree_provider = Gui.getUi,
@@ -458,7 +579,7 @@ end
 ----------------------------------------------------------------------------------------------------
 
 local function init_gui()
-    Framework.gui_manager:register_gui_type('combinator-gui', get_gui_event_definition())
+    Framework.gui_manager:register_gui_type(GUI_NAME, get_gui_event_definition())
 
     local match_inventory_sensor = Matchers:matchEventEntityName(const.inventory_sensor_name)
     local match_ghost_inventory_sensor = Matchers:matchEventEntityGhostName(const.inventory_sensor_name)
