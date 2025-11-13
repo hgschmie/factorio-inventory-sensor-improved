@@ -124,7 +124,7 @@ Constants.inventory = table.invert(defines.inventory)
 Constants.inventories = {}
 
 for _, name in pairs {
-    'charge', 'crafting_progress', 'grid', 'research_progress', 'silo_progress',
+    'charge', 'crafting_progress', 'grid', 'fluid', 'research_progress', 'silo_progress',
     'contents', 'ammo', 'trash', 'cargo', 'input', 'output', 'modules', 'dump',
 } do
     Constants.inventories[name] = { Constants:locale('inventory-name-' .. name) }

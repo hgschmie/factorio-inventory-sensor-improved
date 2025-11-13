@@ -25,6 +25,7 @@
 ---@field interval scan_frequency Scan frequency
 ---@field validate (fun(entity: LuaEntity): boolean)? validation function, whether the given entity can be read
 ---@field inventories (table<defines.inventory, LocalisedString>)? Inventory to name
+---@field supported (table<integer, defines.inventory>)? Supported inventories
 ---@field contributors (table<string, boolean>)? Additional contributors
 ---@field signals (string[])?
 ---@field primary defines.inventory? Primary Inventory, enable by default

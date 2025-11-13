@@ -13,6 +13,19 @@ local table = require('stdlib.utils.table')
 ---@type inventory_sensor.SupportedEntities
 local sensor_entities = require('scripts.supported-entities')
 
+---@type table<defines.inventory, LocalisedString>
+local BURNER_TYPE_INVENTORIES = {
+    fuel = const.inventory_names.fuel,
+    burnt_result = const.inventory_names.burnt_result,
+}
+
+---@type table<integer, defines.inventory>
+local BURNER_TYPE_SUPPORTED = {
+    [defines.inventory.fuel] = 'fuel',
+    [defines.inventory.burnt_result] = 'burnt_result',
+}
+
+
 ------------------------------------------------------------------------
 
 ---@class inventory_sensor.Sensor
@@ -65,9 +78,58 @@ local function create_inventory_contributor(index)
 end
 
 ---@param sensor_data inventory_sensor.Data
+---@param key string
+---@param name string
+---@param enabled boolean?
+---@return inventory_sensor.ContributorInfo? contributor
+local function add_contributor(sensor_data, key, name, enabled)
+    assert(sensor_entities.contributors[key])
+
+    ---@type inventory_sensor.ContributorInfo
+    sensor_data.state.contributors[key] = {
+        name = assert(const.inventories[name]),
+        enabled = enabled,
+    }
+
+    if enabled then return nil end
+
+    -- not enabled -> needs to be a config item from the GUI
+    local contributor_info = {
+        name = assert(const.inventories[name]),
+        enabled = enabled or false,
+        mode = 'quantity',
+        inverted = false,
+    }
+    sensor_data.config.contributors[key] = contributor_info
+
+    return contributor_info
+end
+
+---@param sensor_data inventory_sensor.Data
+---@param index defines.inventory?
+---@param supported table<integer, defines.inventory>
+---@param inventories table<defines.inventory, LocalisedString>
+---@return inventory_sensor.ContributorInfo? contributor
+local function add_inventory(sensor_data, index, supported, inventories)
+    if not index then return nil end
+    local scan_entity = assert(sensor_data.scan_entity)
+    local name = supported[index]
+    if not name then return nil end
+    -- check that the entity actually has the inventory
+    local inventory = scan_entity.get_inventory(index)
+    if not inventory or #inventory == 0 then return nil end
+
+
+    assert(sensor_entities.contributors[name])
+    local name_key = assert(inventories[name])
+    return add_contributor(sensor_data, name, name_key)
+end
+
+---@param sensor_data inventory_sensor.Data
 ---@param scan_template inventory_sensor.ScanTemplate
 function InventorySensor.update_supported(sensor_data, scan_template)
-    if not (sensor_data.scan_entity and sensor_data.scan_entity.valid) then return end
+    local scan_entity = sensor_data.scan_entity
+    if not (scan_entity and scan_entity.valid) then return end
 
     -- turn everything off first, enable default contributors
     sensor_data.state.contributors = {}
@@ -75,66 +137,42 @@ function InventorySensor.update_supported(sensor_data, scan_template)
 
     if scan_template.contributors then
         for name, enabled in pairs(scan_template.contributors) do
-            assert(sensor_entities.contributors[name])
-
-            ---@type inventory_sensor.ContributorInfo
-            local contributor_info = {
-                name = assert(const.inventories[name]),
-                enabled = enabled,
-            }
-            sensor_data.state.contributors[name] = contributor_info
-            if not enabled then
-                -- not enabled -> needs to be a config item from the GUI
-                sensor_data.config.contributors[name] = {
-                    name = assert(const.inventories[name]),
-                    enabled = enabled,
-                    mode = 'one',
-                    inverted = false,
-                }
-            end
+            add_contributor(sensor_data, name, name, enabled)
         end
     end
 
     -- update the available inventories
     if scan_template.inventories then
-        local inventory_map = {}
-        for key in pairs(scan_template.inventories) do
-            inventory_map[defines.inventory[key]] = key
-        end
-
-        for i = 1, sensor_data.scan_entity.get_max_inventory_index() do
-            local name = inventory_map[i]
-            if name then
-                -- check that the entity actually has the inventory
-                local inventory = sensor_data.scan_entity.get_inventory(i --[[@as defines.inventory]])
-                if inventory then
-                    assert(sensor_entities.contributors[name])
-
-                    local name_key = assert(scan_template.inventories[name])
-
-                    sensor_data.state.contributors[name] = {
-                        name = assert(const.inventories[name_key]),
-                        enabled = false,
-                    }
-
-                    sensor_data.config.contributors[name] = {
-                        name = assert(const.inventories[name_key]),
-                        enabled = (i == scan_template.primary),
-                        mode = 'one',
-                        inverted = false,
-                    }
-                end
-            end
+        for i = 1, scan_entity.get_max_inventory_index() do
+            local config_contributor = add_inventory(sensor_data, i --[[@as defines.inventory]], scan_template.supported, scan_template.inventories)
+            if config_contributor then config_contributor.enabled = (i == scan_template.primary) end
         end
     end
 
-    if not scan_template.primary and table_size(sensor_data.config.contributors) == 1 then
+    if scan_entity.burner then
+        add_inventory(sensor_data, scan_entity.burner.inventory.index, BURNER_TYPE_SUPPORTED, BURNER_TYPE_INVENTORIES)
+        add_inventory(sensor_data, scan_entity.burner.burnt_result_inventory.index, BURNER_TYPE_SUPPORTED, BURNER_TYPE_INVENTORIES)
+    end
+
+    if scan_entity.fluids_count > 0 then
+        add_contributor(sensor_data, const.inventory_names.fluid, const.inventory_names.fluid)
+    end
+
+    if table_size(sensor_data.config.contributors) == 1 then
+        -- only one, that is the default
         local _, contributor_info = next(sensor_data.config.contributors)
         contributor_info.enabled = true
+    else
+        local primary_inventory = scan_template.primary or defines.inventory.fuel
+        local inventory_name = scan_template.supported[primary_inventory] or BURNER_TYPE_SUPPORTED[primary_inventory]
+        if inventory_name then
+            local contributor_info = sensor_data.config.contributors[inventory_name]
+            if contributor_info then contributor_info.enabled = true end
+        end
     end
 
     sensor_data.state.reset_on_connect = true
-    sensor_data.state.reconnect_key = get_entity_key(sensor_data.scan_entity)
+    sensor_data.state.reconnect_key = get_entity_key(scan_entity)
 end
 
 ---@param sensor_data inventory_sensor.Data

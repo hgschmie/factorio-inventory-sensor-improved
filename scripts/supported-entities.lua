@@ -53,6 +53,11 @@ local contributors = {
         end
     end,
 
+    [const.inventory_names.fluid] = function(sensor_data, sink)
+        if not sensor_data.config.read_grid then return end
+        if not (sensor_data.scan_entity and sensor_data.scan_entity.valid and sensor_data.scan_entity.grid) then return end
+    end,
+
     [const.inventory_names.crafting_progress] = function(sensor_data, sink)
         if not (sensor_data.scan_entity and sensor_data.scan_entity.valid) then return end
         local progress = sensor_data.scan_entity.crafting_progress
@@ -108,10 +113,10 @@ local ENTITY_TYPES = {
 
     stationary_type = {
         interval = scan_frequency.stationary,
-        inventories = {
-            fuel = const.inventory_names.fuel,
-            burnt_result = const.inventory_names.burnt_result,
-        },
+        -- inventories = {
+        --     fuel = const.inventory_names.fuel,
+        --     burnt_result = const.inventory_names.burnt_result,
+        -- },
     },
 
     container_type = {
@@ -121,6 +126,7 @@ local ENTITY_TYPES = {
         },
         primary = defines.inventory.chest,
     },
+
     logistics_container_type = {
         interval = scan_frequency.stationary,
         inventories = {
@@ -129,6 +135,7 @@ local ENTITY_TYPES = {
         },
         primary = defines.inventory.chest,
     },
+
     car_type = {
         interval = scan_frequency.mobile,
         inventories = {
@@ -142,15 +149,17 @@ local ENTITY_TYPES = {
             [const.inventory_names.grid] = false, -- must be explicitly enabled
         },
     },
+
     locomotive_type = {
         interval = scan_frequency.mobile,
-        inventories = {
-            fuel = const.inventory_names.fuel,
-            burnt_result = const.inventory_names.burnt_result,
-        },
-        primary = defines.inventory.fuel,
+        -- inventories = {
+        --     fuel = const.inventory_names.fuel,
+        --     burnt_result = const.inventory_names.burnt_result,
+        -- },
+        -- primary = defines.inventory.fuel,
         validate = is_train_stopped,
     },
+
     cargo_wagon_type = {
         interval = scan_frequency.mobile,
         inventories = {
@@ -159,6 +168,7 @@ local ENTITY_TYPES = {
         primary = defines.inventory.cargo_wagon,
         validate = is_train_stopped,
     },
+
     artillery_wagon_type = {
         interval = scan_frequency.mobile,
         inventories = {
@@ -167,6 +177,7 @@ local ENTITY_TYPES = {
         primary = defines.inventory.artillery_wagon_ammo,
         validate = is_train_stopped,
     },
+
     assembler_type = {
         interval = scan_frequency.stationary,
         inventories = {
@@ -181,6 +192,7 @@ local ENTITY_TYPES = {
             [const.inventory_names.crafting_progress] = true,
         },
     },
+
     lab_type = {
         interval = scan_frequency.stationary,
         inventories = {
@@ -193,14 +205,16 @@ local ENTITY_TYPES = {
             [const.inventory_names.research_progress] = true,
         },
     },
+
     reactory_type = {
         interval = scan_frequency.stationary,
-        inventories = {
-            fuel = const.inventory_names.fuel,
-            burnt_result = const.inventory_names.burnt_result,
-        },
-        primary = defines.inventory.fuel,
+        -- inventories = {
+        --     fuel = const.inventory_names.fuel,
+        --     burnt_result = const.inventory_names.burnt_result,
+        -- },
+        -- primary = defines.inventory.fuel,
     },
+
     roboport_type = {
         interval = scan_frequency.stationary,
         inventories = {
@@ -209,6 +223,7 @@ local ENTITY_TYPES = {
         },
         primary = defines.inventory.roboport_robot,
     },
+
     rocketsilo_type = {
         interval = scan_frequency.stationary,
         inventories = {
@@ -217,13 +232,14 @@ local ENTITY_TYPES = {
             crafter_modules = const.inventory_names.modules,
             crafter_trash = const.inventory_names.trash,
             rocket_silo_rocket = const.inventory_names.rocket_silo_rocket,
-            rocket_silo_trash = const.inventory_names.rocket_silotrash,
+            rocket_silo_trash = const.inventory_names.rocket_silo_trash,
         },
         primary = defines.inventory.rocket_silo_rocket,
         contributors = {
             [const.inventory_names.silo_progress] = true,
         },
     },
+
     turret_type = {
         interval = scan_frequency.stationary,
         inventories = {
@@ -231,6 +247,7 @@ local ENTITY_TYPES = {
         },
         primary = defines.inventory.turret_ammo,
     },
+
     accumulator_type = {
         interval = scan_frequency.stationary,
         contributors = {
@@ -238,6 +255,14 @@ local ENTITY_TYPES = {
         },
     }
 }
+
+for _, entity_type in pairs(ENTITY_TYPES) do
+    entity_type.supported = {}
+    entity_type.inventories = entity_type.inventories or {}
+    for key in pairs(entity_type.inventories) do
+        entity_type.supported[defines.inventory[key]] = key
+    end
+end
 
 ------------------------------------------------------------------------
 

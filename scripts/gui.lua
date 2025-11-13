@@ -386,9 +386,6 @@ local function update_config_gui_state(gui, sensor_data)
     local read_grid = gui:find_element('read-grid')
     read_grid.state = sensor_data.config.read_grid or false
 
-    local inventory_status = gui:find_element('inventory-status-signals')
-    inventory_status.state = sensor_data.config.inventory_status or false
-
     local status = gui:find_element('status')
     if sensor_data.config.enabled then
         if (sensor_data.scan_entity and sensor_data.scan_entity.valid) then
@@ -409,11 +406,13 @@ local function update_config_gui_state(gui, sensor_data)
     local inventory_element = assert(gui:find_element('inventories'))
     gui:remove_children('inventories')
 
+    local enabled = 0
     for name, contributor_info in pairs(sensor_data.state.contributors) do
         -- state contributor must be false, otherwise it is permanently enabled and
         -- can not be controlled through the gui (e.g. progress contributors)
         if not contributor_info.enabled then
             local inventory_config = assert(sensor_data.config.contributors[name])
+            enabled = enabled + (inventory_config.enabled and 1 or 0)
 
             -- each row has three children: checkbox, radiobuttons and invert
             gui:add_child_elements(inventory_element, {
@@ -469,6 +468,10 @@ local function update_config_gui_state(gui, sensor_data)
             })
         end
     end
+
+    local inventory_status = gui:find_element('inventory-status-signals')
+    inventory_status.state = sensor_data.config.inventory_status or false
+    inventory_status.enabled = enabled < 2
 end
 
 ---@param gui framework.gui
