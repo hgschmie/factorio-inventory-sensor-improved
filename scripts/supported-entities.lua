@@ -36,10 +36,10 @@ end
 ---@type table<string, inventory_sensor.Contributor>
 local contributors = {
     [const.inventory_names.grid] = function(sensor_data, sink)
-        if not sensor_data.config.read_grid then return end
-        if not (sensor_data.scan_entity and sensor_data.scan_entity.valid and sensor_data.scan_entity.grid) then return end
+        local scan_entity = sensor_data.scan_entity
+        if not (scan_entity and scan_entity.valid and scan_entity.grid) then return end
 
-        local grid_equipment = sensor_data.scan_entity.grid.equipment
+        local grid_equipment = scan_entity.grid.equipment
         local items = {}
         for _, equipment in pairs(grid_equipment) do
             local name = equipment.prototype.take_result.name
@@ -53,39 +53,54 @@ local contributors = {
         end
     end,
 
-    [const.inventory_names.fluid] = function(sensor_data, sink)
-        if not sensor_data.config.read_grid then return end
-        if not (sensor_data.scan_entity and sensor_data.scan_entity.valid and sensor_data.scan_entity.grid) then return end
+    [const.inventory_names.fluid] = function(sensor_data, sink, contributor_info)
+        local scan_entity = sensor_data.scan_entity
+        if not (scan_entity and scan_entity.valid) then return end
+
+        local quantity = (contributor_info and contributor_info.mode == 'quantity') or false
+        local inverted = (contributor_info and contributor_info.inverted) or false
+
+        for i = 1, scan_entity.fluids_count, 1 do
+            local fluid = scan_entity.get_fluid(i)
+            if fluid and fluid.amount > 0 then
+                local amount = (quantity and fluid.amount or 1) * (inverted and -1 or 1)
+                sink { value = { type = 'fluid', name = fluid.name, quality = 'normal' }, min = math.ceil(amount) }
+            end
+        end
     end,
 
     [const.inventory_names.crafting_progress] = function(sensor_data, sink)
-        if not (sensor_data.scan_entity and sensor_data.scan_entity.valid) then return end
-        local progress = sensor_data.scan_entity.crafting_progress
+        local scan_entity = sensor_data.scan_entity
+        if not (scan_entity and scan_entity.valid) then return end
+
+        local progress = scan_entity.crafting_progress
         if progress then
             sink { value = const.signals.progress_signal, min = math.floor(progress * 100) }
         end
     end,
 
     [const.inventory_names.research_progress] = function(sensor_data, sink)
-        if not (sensor_data.scan_entity and sensor_data.scan_entity.valid) then return end
-        local progress = sensor_data.scan_entity.force.research_progress
+        local scan_entity = sensor_data.scan_entity
+        if not (scan_entity and scan_entity.valid) then return end
+
+        local progress = scan_entity.force.research_progress
         if progress then
             sink { value = const.signals.progress_signal, min = math.floor(progress * 100) }
         end
     end,
 
     [const.inventory_names.charge] = function(sensor_data, sink)
-        local entity = sensor_data.scan_entity
-        if not (entity and entity.valid) then return end
-        sink { value = const.signals.charge_signal, min = math.floor(entity.energy / entity.electric_buffer_size * 100) }
+        local scan_entity = sensor_data.scan_entity
+        if not (scan_entity and scan_entity.valid) then return end
+        sink { value = const.signals.charge_signal, min = math.floor(scan_entity.energy / scan_entity.electric_buffer_size * 100) }
     end,
 
     [const.inventory_names.silo_progress] = function(sensor_data, sink)
-        local entity = sensor_data.scan_entity
-        if not (entity and entity.valid) then return end
+        local scan_entity = sensor_data.scan_entity
+        if not (scan_entity and scan_entity.valid) then return end
 
-        local progress = math.ceil((entity.rocket_parts * 100) / entity.prototype.rocket_parts_required)
-        local rocket_present = entity.rocket
+        local progress = math.ceil((scan_entity.rocket_parts * 100) / scan_entity.prototype.rocket_parts_required)
+        local rocket_present = scan_entity.rocket
 
         if progress == 0 and rocket_present then
             -- old sensor reported 100 when a rocket is fully built
@@ -96,11 +111,57 @@ local contributors = {
         sink { value = const.signals.progress_signal, min = progress }
         sink { value = const.signals.rocket_ready_signal, min = rocket_present and 1 or 0 }
     end,
+
+    [const.inventory_names.temperature] = function(sensor_data, sink)
+        local scan_entity = sensor_data.scan_entity
+        if not (scan_entity and scan_entity.valid) then return end
+
+        local temperature = scan_entity.temperature
+        if not temperature then return end
+
+        sink { value = const.signals.temperature_signal, min = temperature }
+    end,
+
+    [const.inventory_names.burner_fuel] = function(sensor_data, sink)
+        local scan_entity = sensor_data.scan_entity
+        if not (scan_entity and scan_entity.valid and scan_entity.burner) then return end
+
+        local remaining_fuel = 0
+        local fuel_inventory = scan_entity.get_inventory(defines.inventory.fuel)
+        if fuel_inventory and fuel_inventory.valid then
+            for _, item in pairs(fuel_inventory.get_contents()) do
+                local fuel = prototypes.item[item.name]
+                if fuel and fuel.fuel_value then
+                    remaining_fuel = remaining_fuel + math.max((fuel.fuel_value / 1e6) * item.count, 0)
+                end
+            end
+        end
+
+        if scan_entity.burner.remaining_burning_fuel > 0 then
+            remaining_fuel = remaining_fuel + scan_entity.burner.remaining_burning_fuel / 1e6 -- Joule -> MJ
+        end
+
+        sink { value = const.signals.fuel_signal, min = math.min(math.floor(remaining_fuel + 0.5), 2 ^ 31 - 1) }
+    end,
 }
 
-for name in pairs(defines.inventory) do
-    contributors[name] = function(sensor_data, sink)
-        -- TODO - read an inventory into sink
+for name, index in pairs(defines.inventory) do
+    contributors[name] = function(sensor_data, sink, contributor_info)
+        local scan_entity = sensor_data.scan_entity
+        if not (scan_entity and scan_entity.valid) then return end
+
+        local quantity = (contributor_info and contributor_info.mode == 'quantity') or false
+        local inverted = (contributor_info and contributor_info.inverted) or false
+
+        local inventory = scan_entity.get_inventory(index)
+        if not (inventory and inventory.valid and #inventory > 0) then return end
+
+        for _, item in pairs(inventory.get_contents()) do
+            if item.count > 0 then
+                local amount = (quantity and item.count or 1) * (inverted and -1 or 1)
+                sink { value = { name = item.name, type = 'item', quality = item.quality or 'normal' }, min = amount }
+            end
+        end
     end
 end
 
@@ -108,15 +169,16 @@ end
 -- Defined entity types
 ------------------------------------------------------------------------
 
+local GLOBAL_CONTRIBUTORS = {
+    const.inventory_names.temperature,
+    const.inventory_names.burner_fuel,
+}
+
 ---@type table<string, inventory_sensor.ScanTemplate>
 local ENTITY_TYPES = {
 
     stationary_type = {
         interval = scan_frequency.stationary,
-        -- inventories = {
-        --     fuel = const.inventory_names.fuel,
-        --     burnt_result = const.inventory_names.burnt_result,
-        -- },
     },
 
     container_type = {
@@ -139,7 +201,7 @@ local ENTITY_TYPES = {
     car_type = {
         interval = scan_frequency.mobile,
         inventories = {
-            car_trunk = const.inventory_names.contents,
+            car_trunk = const.inventory_names.trunk,
             car_ammo = const.inventory_names.ammo,
             car_trash = const.inventory_names.trash,
         },
@@ -152,11 +214,6 @@ local ENTITY_TYPES = {
 
     locomotive_type = {
         interval = scan_frequency.mobile,
-        -- inventories = {
-        --     fuel = const.inventory_names.fuel,
-        --     burnt_result = const.inventory_names.burnt_result,
-        -- },
-        -- primary = defines.inventory.fuel,
         validate = is_train_stopped,
     },
 
@@ -204,15 +261,6 @@ local ENTITY_TYPES = {
         contributors = {
             [const.inventory_names.research_progress] = true,
         },
-    },
-
-    reactory_type = {
-        interval = scan_frequency.stationary,
-        -- inventories = {
-        --     fuel = const.inventory_names.fuel,
-        --     burnt_result = const.inventory_names.burnt_result,
-        -- },
-        -- primary = defines.inventory.fuel,
     },
 
     roboport_type = {
@@ -359,7 +407,8 @@ end
 local sensor_entities = {
     supported_entities = supported_entity_map,
     contributors = contributors,
-    blacklist = blacklisted_entities
+    blacklist = blacklisted_entities,
+    global_contributors = GLOBAL_CONTRIBUTORS,
 }
 
 return sensor_entities

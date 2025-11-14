@@ -11,7 +11,7 @@
 -- sensor.lua
 ----------------------------------------------------------------------------------------------------
 
----@alias inventory_sensor.Contributor fun(sensor_data: inventory_sensor.Data, sink: fun(filter: LogisticFilter))
+---@alias inventory_sensor.Contributor fun(sensor_data: inventory_sensor.Data, sink: fun(filter: LogisticFilter), contributor_config: inventory_sensor.ContributorInfo?)
 
 ---@alias inventory_sensor.TypeMode 'one'|'quantity'
 
@@ -83,3 +83,4 @@
 ---@field supported_entities table<string, table<string, inventory_sensor.ScanTemplate>>
 ---@field contributors table<string, inventory_sensor.Contributor>
 ---@field blacklist table<string, string>
+---@field global_contributors string[]

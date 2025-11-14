@@ -32,7 +32,6 @@ local function get_gui_event_definition()
         events = {
             onWindowClosed = Gui.onWindowClosed,
             onSwitchEnabled = Gui.onSwitchEnabled,
-            onToggleGridRead = Gui.onToggleGridRead,
             onToggleInventoryStatusSignals = Gui.onToggleInventoryStatusSignals,
             onToggleInventorySelect = Gui.onToggleInventorySelect,
             onToggleChangeRequestMode = Gui.onToggleChangeRequestMode,
@@ -195,6 +194,14 @@ function Gui.getUi(gui)
                                 },
                             },
                             {
+                                type = 'checkbox',
+                                caption = { const:locale('inventory-status-signals') },
+                                tooltip = { const:locale('inventory-status-signals-tooltip') },
+                                name = 'inventory-status-signals',
+                                handler = { [defines.events.on_gui_checked_state_changed] = gui_events.onToggleInventoryStatusSignals },
+                                state = false,
+                            },
+                            {
                                 type = 'line',
                             },
                             {
@@ -210,21 +217,6 @@ function Gui.getUi(gui)
                                     top_margin = -8,         -- pull the table a bit closer to the label above
                                     horizontal_spacing = 24, -- space the elements in the table out
                                 },
-                            },
-                            {
-                                type = 'checkbox',
-                                caption = { const:locale('read-grid') },
-                                name = 'read-grid',
-                                handler = { [defines.events.on_gui_checked_state_changed] = gui_events.onToggleGridRead },
-                                state = false,
-                            },
-                            {
-                                type = 'checkbox',
-                                caption = { const:locale('inventory-status-signals') },
-                                tooltip = { const:locale('inventory-status-signals-tooltip') },
-                                name = 'inventory-status-signals',
-                                handler = { [defines.events.on_gui_checked_state_changed] = gui_events.onToggleInventoryStatusSignals },
-                                state = false,
                             },
                             {
                                 type = 'scroll-pane',
@@ -314,17 +306,6 @@ function Gui.onSwitchEnabled(event, gui)
     sensor_data.config.enabled = on_off_values[event.element.switch_state]
 end
 
---- Enable / Disable reading grid
----
----@param event EventData.on_gui_checked_state_changed
----@param gui framework.gui
-function Gui.onToggleGridRead(event, gui)
-    local sensor_data = This.SensorController:entity(gui.entity_id)
-    if not sensor_data then return end
-
-    sensor_data.config.read_grid = event.element.state
-end
-
 --- Enable / Disable provide virtual signals
 ---
 ---@param event EventData.on_gui_checked_state_changed
@@ -383,9 +364,6 @@ local function update_config_gui_state(gui, sensor_data)
     local entity_status = gui:find_element('entity-status')
     entity_status.caption = { tools.STATUS_NAMES[sensor_status] }
 
-    local read_grid = gui:find_element('read-grid')
-    read_grid.state = sensor_data.config.read_grid or false
-
     local status = gui:find_element('status')
     if sensor_data.config.enabled then
         if (sensor_data.scan_entity and sensor_data.scan_entity.valid) then
@@ -406,13 +384,15 @@ local function update_config_gui_state(gui, sensor_data)
     local inventory_element = assert(gui:find_element('inventories'))
     gui:remove_children('inventories')
 
-    local enabled = 0
-    for name, contributor_info in pairs(sensor_data.state.contributors) do
-        -- state contributor must be false, otherwise it is permanently enabled and
-        -- can not be controlled through the gui (e.g. progress contributors)
-        if not contributor_info.enabled then
+    local enabled_count = 0
+    -- show all configurable contributors
+    for name, contributor_info in pairs(sensor_data.config.contributors) do
+        local contributor_state = sensor_data.state.contributors[name]
+        local contributor_enabled = contributor_state and contributor_state.enabled or false
+        if not contributor_enabled then
             local inventory_config = assert(sensor_data.config.contributors[name])
-            enabled = enabled + (inventory_config.enabled and 1 or 0)
+            enabled_count = enabled_count + (inventory_config.enabled and 1 or 0)
+            local config_enabled = enabled and (contributor_state and true or false)
 
             -- each row has three children: checkbox, radiobuttons and invert
             gui:add_child_elements(inventory_element, {
@@ -423,6 +403,7 @@ local function update_config_gui_state(gui, sensor_data)
                     elem_tags = { inventory_name = name },
                     handler = { [defines.events.on_gui_checked_state_changed] = gui.gui_events.onToggleInventorySelect },
                     state = inventory_config.enabled,
+                    enabled = config_enabled,
                 },
                 {
                     type = 'flow',
@@ -438,8 +419,8 @@ local function update_config_gui_state(gui, sensor_data)
                                 report_state = 'quantity',
                             },
                             handler = { [defines.events.on_gui_checked_state_changed] = gui.gui_events.onToggleChangeRequestMode },
-                            enabled = inventory_config.enabled,
-                            state = enabled and inventory_config.mode == 'quantity',
+                            enabled = config_enabled and inventory_config.enabled,
+                            state = inventory_config.mode == 'quantity',
                         },
                         {
                             type = 'radiobutton',
@@ -450,8 +431,8 @@ local function update_config_gui_state(gui, sensor_data)
                                 report_state = 'one',
                             },
                             handler = { [defines.events.on_gui_checked_state_changed] = gui.gui_events.onToggleChangeRequestMode },
-                            enabled = inventory_config.enabled,
-                            state = enabled and inventory_config.mode == 'one',
+                            enabled = config_enabled and inventory_config.enabled,
+                            state = inventory_config.mode == 'one',
                         },
                     }
                 },
@@ -462,8 +443,8 @@ local function update_config_gui_state(gui, sensor_data)
                     name = name .. '-invert',
                     elem_tags = { inventory_name = name, },
                     handler = { [defines.events.on_gui_checked_state_changed] = gui.gui_events.onToggleRequestInvert },
-                    enabled = inventory_config.enabled,
-                    state = enabled and inventory_config.inverted or false,
+                    enabled = config_enabled and inventory_config.enabled,
+                    state = inventory_config.inverted or false,
                 },
             })
         end
@@ -471,7 +452,7 @@ local function update_config_gui_state(gui, sensor_data)
 
     local inventory_status = gui:find_element('inventory-status-signals')
     inventory_status.state = sensor_data.config.inventory_status or false
-    inventory_status.enabled = enabled < 2
+    inventory_status.enabled = enabled and (enabled_count < 2)
 end
 
 ---@param gui framework.gui

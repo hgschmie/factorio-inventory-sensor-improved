@@ -30,6 +30,9 @@ Constants.gfx_location = Constants.root .. '/graphics/'
 Constants.order = 'c[combinators]-d[inventory-sensor]'
 Constants.config_tag_name = 'is_config'
 
+Constants.debug_lifetime = 10
+Constants.debug_scan_lifetime = 2
+
 --------------------------------------------------------------------------------
 -- Framework initializer
 --------------------------------------------------------------------------------
@@ -126,6 +129,7 @@ Constants.inventories = {}
 for _, name in pairs {
     'charge', 'crafting_progress', 'grid', 'fluid', 'research_progress', 'silo_progress',
     'contents', 'ammo', 'trash', 'cargo', 'input', 'output', 'modules', 'dump',
+    'temperature', 'burner_fuel', 'trunk',
 } do
     Constants.inventories[name] = { Constants:locale('inventory-name-' .. name) }
 end

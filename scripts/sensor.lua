@@ -77,59 +77,55 @@ local function create_inventory_contributor(index)
     end
 end
 
----@param sensor_data inventory_sensor.Data
----@param key string
----@param name string
----@param enabled boolean?
----@return inventory_sensor.ContributorInfo? contributor
-local function add_contributor(sensor_data, key, name, enabled)
-    assert(sensor_entities.contributors[key])
-
-    ---@type inventory_sensor.ContributorInfo
-    sensor_data.state.contributors[key] = {
-        name = assert(const.inventories[name]),
-        enabled = enabled,
-    }
-
-    if enabled then return nil end
-
-    -- not enabled -> needs to be a config item from the GUI
-    local contributor_info = {
-        name = assert(const.inventories[name]),
-        enabled = enabled or false,
-        mode = 'quantity',
-        inverted = false,
-    }
-    sensor_data.config.contributors[key] = contributor_info
-
-    return contributor_info
-end
-
----@param sensor_data inventory_sensor.Data
----@param index defines.inventory?
----@param supported table<integer, defines.inventory>
----@param inventories table<defines.inventory, LocalisedString>
----@return inventory_sensor.ContributorInfo? contributor
-local function add_inventory(sensor_data, index, supported, inventories)
-    if not index then return nil end
-    local scan_entity = assert(sensor_data.scan_entity)
-    local name = supported[index]
-    if not name then return nil end
-    -- check that the entity actually has the inventory
-    local inventory = scan_entity.get_inventory(index)
-    if not inventory or #inventory == 0 then return nil end
-
-
-    assert(sensor_entities.contributors[name])
-    local name_key = assert(inventories[name])
-    return add_contributor(sensor_data, name, name_key)
-end
-
+-- Create a set of contributors (in state) and a subset that is configurable (in config).
+-- Reconnect with and existing config if the same type of entity was reconnected
 ---@param sensor_data inventory_sensor.Data
 ---@param scan_template inventory_sensor.ScanTemplate
 function InventorySensor.update_supported(sensor_data, scan_template)
     local scan_entity = sensor_data.scan_entity
     if not (scan_entity and scan_entity.valid) then return end
+
+    local configured_contributors = sensor_data.config.contributors or {}
+
+    ---@param key string
+    ---@param name string
+    ---@param enabled boolean?
+    local add_contributor = function(key, name, enabled)
+        assert(sensor_entities.contributors[key])
+
+        ---@type inventory_sensor.ContributorInfo
+        sensor_data.state.contributors[key] = {
+            name = assert(const.inventories[name]),
+            enabled = enabled or false,
+        }
+
+        -- enabled means that this contributor is unconditionally enabled
+        -- otherwise needs to be a config item from the GUI
+        if enabled then return end
+
+        local contributor_info = configured_contributors[key] or {
+            name = assert(const.inventories[name]),
+            enabled = enabled or false,
+            mode = 'quantity',
+            inverted = false,
+        }
+
+        sensor_data.config.contributors[key] = contributor_info
+    end
+
+    ---@param index defines.inventory?
+    ---@param supported table<integer, defines.inventory>
+    ---@param inventories table<defines.inventory, LocalisedString>
+    local add_inventory = function(index, supported, inventories)
+        if not index then return end
+        local key = supported[index]
+        if not key then return end
+        -- check that the entity actually has the inventory
+        local inventory = scan_entity.get_inventory(index)
+        if not (inventory and inventory.valid and #inventory > 0) then return end
+
+        add_contributor(key, assert(inventories[key]))
+    end
 
     -- turn everything off first, enable default contributors
     sensor_data.state.contributors = {}
@@ -137,37 +133,39 @@ function InventorySensor.update_supported(sensor_data, scan_template)
 
     if scan_template.contributors then
         for name, enabled in pairs(scan_template.contributors) do
-            add_contributor(sensor_data, name, name, enabled)
+            add_contributor(name, name, enabled)
         end
     end
 
     -- update the available inventories
     if scan_template.inventories then
-        for i = 1, scan_entity.get_max_inventory_index() do
-            local config_contributor = add_inventory(sensor_data, i --[[@as defines.inventory]], scan_template.supported, scan_template.inventories)
-            if config_contributor then config_contributor.enabled = (i == scan_template.primary) end
+        for index = 1, scan_entity.get_max_inventory_index() do
+            add_inventory(index --[[@as defines.inventory]], scan_template.supported, scan_template.inventories)
         end
     end
 
     if scan_entity.burner then
-        add_inventory(sensor_data, scan_entity.burner.inventory.index, BURNER_TYPE_SUPPORTED, BURNER_TYPE_INVENTORIES)
-        add_inventory(sensor_data, scan_entity.burner.burnt_result_inventory.index, BURNER_TYPE_SUPPORTED, BURNER_TYPE_INVENTORIES)
+        add_inventory(scan_entity.burner.inventory.index, BURNER_TYPE_SUPPORTED, BURNER_TYPE_INVENTORIES)
+        add_inventory(scan_entity.burner.burnt_result_inventory.index, BURNER_TYPE_SUPPORTED, BURNER_TYPE_INVENTORIES)
     end
 
     if scan_entity.fluids_count > 0 then
-        add_contributor(sensor_data, const.inventory_names.fluid, const.inventory_names.fluid)
+        add_contributor(const.inventory_names.fluid, const.inventory_names.fluid)
     end
 
+    -- enable elements if needed
     if table_size(sensor_data.config.contributors) == 1 then
         -- only one, that is the default
-        local _, contributor_info = next(sensor_data.config.contributors)
-        contributor_info.enabled = true
+        local inventory_name, contributor_info = next(sensor_data.config.contributors)
+        -- only enable if not configured
+        if not configured_contributors[inventory_name] then contributor_info.enabled = true end
     else
         local primary_inventory = scan_template.primary or defines.inventory.fuel
         local inventory_name = scan_template.supported[primary_inventory] or BURNER_TYPE_SUPPORTED[primary_inventory]
         if inventory_name then
             local contributor_info = sensor_data.config.contributors[inventory_name]
-            if contributor_info then contributor_info.enabled = true end
+            -- only enable if not configured
+            if contributor_info and not configured_contributors[inventory_name] then contributor_info.enabled = true end
         end
     end
 
@@ -282,17 +280,28 @@ function InventorySensor.scan(sensor_data, force)
         -- already exists, use that
         sensor_data.scan_area = (not force) and sensor_data.scan_area or InventorySensor.create_scan_area(sensor_data)
 
+        local entities = sensor_data.sensor_entity.surface.find_entities(sensor_data.scan_area)
+
         if Framework.settings:startup_setting('debug_mode') then
+            local color = { r = 0.5, g = 0.5, b = 1 }
             rendering.draw_rectangle {
-                color = { r = 0.5, g = 0.5, b = 1 },
+                color = color,
                 surface = sensor_data.sensor_entity.surface,
                 left_top = sensor_data.scan_area.left_top,
                 right_bottom = sensor_data.scan_area.right_bottom,
-                time_to_live = 10,
+                time_to_live = const.debug_lifetime,
+            }
+            rendering.draw_text {
+                text = tostring(#entities),
+                surface = sensor_data.sensor_entity.surface,
+                target = Area(sensor_data.scan_area):center(),
+                color = color,
+                scale = 0.5,
+                alignment = 'center',
+                vertical_alignment = 'middle',
+                time_to_live = const.debug_lifetime,
             }
         end
-
-        local entities = sensor_data.sensor_entity.surface.find_entities(sensor_data.scan_area)
 
         for _, entity in pairs(entities) do
             if InventorySensor.connect(sensor_data, entity) then return true end
@@ -364,8 +373,6 @@ function InventorySensor.load(sensor_data, force)
 
     ---@type fun(filter: LogisticFilter)
     local sink = function(filter)
-        if filter.min == 0 then return end
-
         local signal = assert(filter.value)
         local key = ('%s:%s:%s'):format(signal.name, signal.type or 'item', signal.quality or 'normal')
         local index = cache[key]
@@ -377,8 +384,8 @@ function InventorySensor.load(sensor_data, force)
         end
     end
 
-    local burner = scan_entity.burner
-    local remaining_fuel = 0
+    -- local burner = scan_entity.burner
+    -- local remaining_fuel = 0
 
     -- load inventories for the entity
     -- if table_size(sensor_data.state.inventories) > 0 then
@@ -424,53 +431,53 @@ function InventorySensor.load(sensor_data, force)
     -- end
 
     -- get fluids
-    for i = 1, scan_entity.fluids_count, 1 do
-        local fluid = scan_entity.get_fluid(i)
-        if sensor_data.config.inventory_status then
-            ---@type inventory_sensor.InventoryStatus
-            local fluidStatus = {}
-            fluidStatus.availableFluidsCount = fluid and (fluid.amount > 0) and 1 or 0
-            fluidStatus.totalFluidAmount = fluid and fluid.amount or 0
-            local entity_capacity = scan_entity.prototype.get_fluid_capacity()
-            if entity_capacity > 0 then
-                fluidStatus.totalFluidsCount = 1
-                fluidStatus.totalFluidCapacity = entity_capacity
-                fluidStatus.emptyFluidsCount = fluidStatus.totalFluidsCount - fluidStatus.availableFluidsCount
-            end
+    -- for i = 1, scan_entity.fluids_count, 1 do
+    --     local fluid = scan_entity.get_fluid(i)
+    --     if sensor_data.config.inventory_status then
+    --         ---@type inventory_sensor.InventoryStatus
+    --         local fluidStatus = {}
+    --         fluidStatus.availableFluidsCount = fluid and (fluid.amount > 0) and 1 or 0
+    --         fluidStatus.totalFluidAmount = fluid and fluid.amount or 0
+    --         local entity_capacity = scan_entity.prototype.get_fluid_capacity()
+    --         if entity_capacity > 0 then
+    --             fluidStatus.totalFluidsCount = 1
+    --             fluidStatus.totalFluidCapacity = entity_capacity
+    --             fluidStatus.emptyFluidsCount = fluidStatus.totalFluidsCount - fluidStatus.availableFluidsCount
+    --         end
 
-            if scan_entity.fluidbox and (#scan_entity.fluidbox >= i) then
-                fluidStatus.totalFluidsCount = (scan_entity.fluidbox.get_capacity(i) > 0) and 1 or 0
-                fluidStatus.totalFluidCapacity = scan_entity.fluidbox.get_capacity(i) or 0
-                fluidStatus.emptyFluidsCount = fluidStatus.totalFluidsCount - fluidStatus.availableFluidsCount
-            end
+    --         if scan_entity.fluidbox and (#scan_entity.fluidbox >= i) then
+    --             fluidStatus.totalFluidsCount = (scan_entity.fluidbox.get_capacity(i) > 0) and 1 or 0
+    --             fluidStatus.totalFluidCapacity = scan_entity.fluidbox.get_capacity(i) or 0
+    --             fluidStatus.emptyFluidsCount = fluidStatus.totalFluidsCount - fluidStatus.availableFluidsCount
+    --         end
 
-            for k, v in pairs(fluidStatus) do
-                totalInventoryStatus[k] = totalInventoryStatus[k] + v
-            end
+    --         for k, v in pairs(fluidStatus) do
+    --             totalInventoryStatus[k] = totalInventoryStatus[k] + v
+    --         end
 
-            if fluid then
-                sink { value = { type = 'fluid', name = fluid.name, quality = 'normal' }, min = math.ceil(fluid.amount) }
-            end
-        end
-    end
+    --         if fluid then
+    --             sink { value = { type = 'fluid', name = fluid.name, quality = 'normal' }, min = math.ceil(fluid.amount) }
+    --         end
+    --     end
+    -- end
 
-    -- add virtual signals for inventory
-    if sensor_data.config.inventory_status then
-        if totalInventoryStatus.totalSlotCount ~= 0 then
-            totalInventoryStatus.usedSlotPercentage = totalInventoryStatus.filledSlotCount * 100 / totalInventoryStatus.totalSlotCount
-        end
+    -- -- add virtual signals for inventory
+    -- if sensor_data.config.inventory_status then
+    --     if totalInventoryStatus.totalSlotCount ~= 0 then
+    --         totalInventoryStatus.usedSlotPercentage = totalInventoryStatus.filledSlotCount * 100 / totalInventoryStatus.totalSlotCount
+    --     end
 
-        if totalInventoryStatus.totalFluidCapacity ~= 0 then
-            totalInventoryStatus.usedFluidPercentage = totalInventoryStatus.totalFluidAmount * 100 / totalInventoryStatus.totalFluidCapacity
-        end
+    --     if totalInventoryStatus.totalFluidCapacity ~= 0 then
+    --         totalInventoryStatus.usedFluidPercentage = totalInventoryStatus.totalFluidAmount * 100 / totalInventoryStatus.totalFluidCapacity
+    --     end
 
-        for signal_name, field_name in pairs(const.inventory_status_signals) do
-            local value = totalInventoryStatus[field_name]
-            if value ~= 0 then
-                sink { value = { type = 'virtual', name = 'signal-' .. signal_name, quality = 'normal' }, min = value }
-            end
-        end
-    end
+    --     for signal_name, field_name in pairs(const.inventory_status_signals) do
+    --         local value = totalInventoryStatus[field_name]
+    --         if value ~= 0 then
+    --             sink { value = { type = 'virtual', name = 'signal-' .. signal_name, quality = 'normal' }, min = value }
+    --         end
+    --     end
+    -- end
 
     -- add specific static signals
     if scan_template.signals then
@@ -482,23 +489,17 @@ function InventorySensor.load(sensor_data, force)
 
     -- add custom items
     for name, contributor_info in pairs(sensor_data.state.contributors) do
-        if contributor_info.enabled or (sensor_data.config.contributors[name] and sensor_data.config.contributors[name].enabled) then
+        local contributor_config = sensor_data.config.contributors[name]
+        if contributor_info.enabled or (contributor_config and contributor_config.enabled) then
             local contributor = assert(sensor_entities.contributors[name])
-            contributor(sensor_data, sink)
+            contributor(sensor_data, sink, contributor_config)
         end
     end
 
-    local temperature = scan_entity.temperature
-    if temperature then
-        sink { value = const.signals.temperature_signal, min = temperature }
-    end
-
-    -- if this is a burner entity, add burner signal
-    if burner then
-        if burner.remaining_burning_fuel > 0 then
-            remaining_fuel = remaining_fuel + burner.remaining_burning_fuel / 1e6 -- Joule -> MJ
-        end
-        sink { value = const.signals.fuel_signal, min = math.min(math.floor(remaining_fuel + 0.5), 2 ^ 31 - 1) }
+    -- add globals
+    for _, name in pairs(sensor_entities.global_contributors) do
+        local contributor = assert(sensor_entities.contributors[name])
+        contributor(sensor_data, sink)
     end
 
     if Framework.settings:startup_setting('debug_mode') then
@@ -507,11 +508,16 @@ function InventorySensor.load(sensor_data, force)
             surface = sensor_data.sensor_entity.surface,
             left_top = sensor_data.sensor_entity.bounding_box.left_top,
             right_bottom = sensor_data.sensor_entity.bounding_box.right_bottom,
-            time_to_live = 2,
+            time_to_live = const.debug_scan_lifetime,
         }
     end
 
-    section.filters = filters
+    local final_filter = {}
+    for _, filter in pairs(filters) do
+        if filter.min ~= 0 then table.insert(final_filter, filter) end
+    end
+
+    section.filters = final_filter
 
     return true
 end
@@ -525,6 +531,7 @@ end
 ---@return boolean connected
 function InventorySensor.connect(sensor_data, entity)
     if not (entity and entity.valid) then return false end
+    if entity.has_flag('not-on-map') then return false end
     if sensor_entities.blacklist[entity.name] then return false end
 
     -- reconnect to the same entity
@@ -535,24 +542,16 @@ function InventorySensor.connect(sensor_data, entity)
 
     sensor_data.scan_entity = entity
     sensor_data.scan_interval = scan_controller.interval or scan_frequency.stationary -- unset scan interval -> stationary
-    -- FIXME    sensor_data.inventories = table.array_to_dictionary(scan_controller.inventories or {}, true)
     sensor_data.config.scan_entity_id = entity.unit_number
 
     local entity_key = get_entity_key(entity)
 
     if sensor_data.state.reset_on_connect and not (sensor_data.state.reconnect_key and entity_key == sensor_data.state.reconnect_key) then
-        -- FIXME        sensor_data.config.logistic_member_index = nil
+        sensor_data.config.contributors = nil
     end
 
     sensor_data.state.reconnect_key = entity_key
 
-    -- burners also look at fuel
-    -- TODO if entity.burner then
-    --     sensor_data.state.inventories[defines.inventory.fuel] = true
-    -- end
-
-    -- update the list of supported inventories for the entity.
-    -- Not all entities support all possible inventories
     InventorySensor.update_supported(sensor_data, scan_controller)
 
     InventorySensor.load(sensor_data, true)
@@ -563,7 +562,7 @@ function InventorySensor.connect(sensor_data, entity)
             surface = sensor_data.sensor_entity.surface,
             left_top = sensor_data.scan_area.left_top,
             right_bottom = sensor_data.scan_area.right_bottom,
-            time_to_live = 10,
+            time_to_live = const.debug_lifetime,
         }
     end
 
@@ -583,7 +582,6 @@ function InventorySensor.disconnect(sensor_data)
     sensor_data.state.contributors = {}
 
     sensor_data.config.scan_entity_id = nil
-    sensor_data.config.contributors = {}
 
     local section = InventorySensor.get_section(sensor_data)
     section.filters = {}
@@ -594,7 +592,7 @@ function InventorySensor.disconnect(sensor_data)
             surface = sensor_data.sensor_entity.surface,
             left_top = sensor_data.scan_area.left_top,
             right_bottom = sensor_data.scan_area.right_bottom,
-            time_to_live = 10,
+            time_to_live = const.debug_lifetime,
         }
     end
 end
