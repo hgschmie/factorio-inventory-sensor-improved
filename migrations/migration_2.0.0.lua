@@ -18,8 +18,8 @@ for _, sensor_data in pairs(This.SensorController:entities()) do
 
     ---@diagnostic disable-next-line:undefined-field
     if sensor_data.config.read_grid then
-        sensor_data.config.contributors[const.inventory_name.grid] = sensor_data.config.contributors[const.inventory_name.grid] or {
-            name = assert(const.inventories[const.inventory_name.grid]),
+        sensor_data.config.contributors[const.inventory_names.grid] = sensor_data.config.contributors[const.inventory_names.grid] or {
+            name = assert(const.inventories[const.inventory_names.grid]),
             enabled = true,
             mode = 'quantity',
             inverted = false,

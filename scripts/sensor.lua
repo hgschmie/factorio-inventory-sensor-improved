@@ -149,7 +149,7 @@ function InventorySensor.update_supported(sensor_data, scan_template)
     end
 
     if scan_delegate.grid then
-        add_contributor(const.inventory_name.grid, const.inventory_name.grid)
+        add_contributor(const.inventory_names.grid, const.inventory_names.grid)
     end
 
     -- enable elements if needed
@@ -184,8 +184,8 @@ function InventorySensor.reconfigure(sensor_data, config)
     -- old (pre-2.0.0) config blueprinting
     ---@diagnostic disable-next-line:undefined-field
     if sensor_data.config.read_grid then
-        sensor_data.config.contributors[const.inventory_name.grid] = sensor_data.config.contributors[const.inventory_name.grid] or {
-            name = assert(const.inventories[const.inventory_name.grid]),
+        sensor_data.config.contributors[const.inventory_names.grid] = sensor_data.config.contributors[const.inventory_names.grid] or {
+            name = assert(const.inventories[const.inventory_names.grid]),
             enabled = true,
             mode = 'quantity',
             inverted = false,
