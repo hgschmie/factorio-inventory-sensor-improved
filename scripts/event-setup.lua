@@ -116,7 +116,7 @@ local function onConfigurationChanged()
     end
 
     if Framework.settings:startup_setting(const.settings_update_inventory_sensors_name) then
-        assert(migration)
+        assert(Migration)
 
         Migration:migrateSensors()
         Migration:migrateBlueprints()

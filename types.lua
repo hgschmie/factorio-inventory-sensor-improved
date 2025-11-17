@@ -11,7 +11,13 @@
 -- sensor.lua
 ----------------------------------------------------------------------------------------------------
 
----@alias inventory_sensor.Contributor fun(sensor_data: inventory_sensor.Data, sink: fun(filter: LogisticFilter), contributor_config: inventory_sensor.ContributorInfo?)
+
+---@class inventory_sensor.ContributorTemplate
+---@field sensor_data inventory_sensor.Data
+---@field scan_entity LuaEntity
+---@field sink fun(filter: LogisticFilter)
+---@field status_sink fun(inventory: inventory_sensor.InventoryStatus)
+---@field contributor_info inventory_sensor.ContributorInfo?
 
 ---@alias inventory_sensor.TypeMode 'one'|'quantity'
 
@@ -22,19 +28,19 @@
 ---@field inverted boolean?
 
 ---@class inventory_sensor.ScanTemplate
----@field interval scan_frequency Scan frequency
+---@field interval inventory_sensor.scan_frequency Scan frequency
 ---@field validate (fun(entity: LuaEntity): boolean)? validation function, whether the given entity can be read
 ---@field inventories (table<defines.inventory, LocalisedString>)? Inventory to name
 ---@field supported (table<integer, defines.inventory>)? Supported inventories
 ---@field contributors (table<string, boolean>)? Additional contributors
 ---@field signals (string[])?
 ---@field primary defines.inventory? Primary Inventory, enable by default
+---@field delegate (fun(delegate: LuaEntity?):LuaEntity?)? Allows a template to declare a delegate to scan
 
 ---@class inventory_sensor.Config
 ---@field enabled boolean
 ---@field scan_entity_id integer?
 ---@field contributors table<string, inventory_sensor.ContributorInfo> List of activated contributors in the GUI
----@field read_grid boolean
 ---@field inventory_status boolean
 
 ---@class inventory_sensor.State

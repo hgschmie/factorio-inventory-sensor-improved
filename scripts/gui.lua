@@ -206,6 +206,7 @@ function Gui.getUi(gui)
                             },
                             {
                                 type = 'label',
+                                name = 'inventory-header',
                                 style = 'semibold_label',
                                 caption = { const:locale('inventories-heading') },
                             },
@@ -214,7 +215,7 @@ function Gui.getUi(gui)
                                 name = 'inventories',
                                 column_count = 3,
                                 style_mods = {
-                                    top_margin = -8,         -- pull the table a bit closer to the label above
+                                    -- top_margin = -8,         -- pull the table a bit closer to the label above
                                     horizontal_spacing = 24, -- space the elements in the table out
                                 },
                             },
@@ -384,14 +385,22 @@ local function update_config_gui_state(gui, sensor_data)
     local inventory_element = assert(gui:find_element('inventories'))
     gui:remove_children('inventories')
 
-    local enabled_count = 0
+    local has_inventories = table_size(sensor_data.config.contributors) > 0
+
+    local inventory_header = gui:find_element('inventory-header')
+    inventory_header.visible = has_inventories
+
+    local inventory_status   = gui:find_element('inventory-status-signals')
+    inventory_status.state   = sensor_data.config.inventory_status or false
+    inventory_status.enabled = enabled
+    inventory_status.visible = has_inventories
+
     -- show all configurable contributors
     for name, contributor_info in pairs(sensor_data.config.contributors) do
         local contributor_state = sensor_data.state.contributors[name]
         local contributor_enabled = contributor_state and contributor_state.enabled or false
         if not contributor_enabled then
             local inventory_config = assert(sensor_data.config.contributors[name])
-            enabled_count = enabled_count + (inventory_config.enabled and 1 or 0)
             local config_enabled = enabled and (contributor_state and true or false)
 
             -- each row has three children: checkbox, radiobuttons and invert
@@ -449,10 +458,6 @@ local function update_config_gui_state(gui, sensor_data)
             })
         end
     end
-
-    local inventory_status = gui:find_element('inventory-status-signals')
-    inventory_status.state = sensor_data.config.inventory_status or false
-    inventory_status.enabled = enabled and (enabled_count < 2)
 end
 
 ---@param gui framework.gui

@@ -25,7 +25,6 @@ local BURNER_TYPE_SUPPORTED = {
     [defines.inventory.burnt_result] = 'burnt_result',
 }
 
-
 ------------------------------------------------------------------------
 
 ---@class inventory_sensor.Sensor
@@ -70,20 +69,16 @@ local function get_entity_key(entity)
     return entity.type .. '__' .. entity.name
 end
 
----@param index defines.inventory
----@return inventory_sensor.Contributor
-local function create_inventory_contributor(index)
-    return function(sensor_data, sink)
-    end
-end
-
 -- Create a set of contributors (in state) and a subset that is configurable (in config).
 -- Reconnect with and existing config if the same type of entity was reconnected
 ---@param sensor_data inventory_sensor.Data
 ---@param scan_template inventory_sensor.ScanTemplate
 function InventorySensor.update_supported(sensor_data, scan_template)
     local scan_entity = sensor_data.scan_entity
-    if not (scan_entity and scan_entity.valid) then return end
+    -- some entities (e.g. cargo bay) delegate to a different entity
+    local scan_delegate = scan_template.delegate and scan_template.delegate(scan_entity) or scan_entity
+
+    if not (scan_delegate and scan_delegate.valid) then return end
 
     local configured_contributors = sensor_data.config.contributors or {}
 
@@ -121,7 +116,7 @@ function InventorySensor.update_supported(sensor_data, scan_template)
         local key = supported[index]
         if not key then return end
         -- check that the entity actually has the inventory
-        local inventory = scan_entity.get_inventory(index)
+        local inventory = scan_delegate.get_inventory(index)
         if not (inventory and inventory.valid and #inventory > 0) then return end
 
         add_contributor(key, assert(inventories[key]))
@@ -139,18 +134,22 @@ function InventorySensor.update_supported(sensor_data, scan_template)
 
     -- update the available inventories
     if scan_template.inventories then
-        for index = 1, scan_entity.get_max_inventory_index() do
+        for index = 1, scan_delegate.get_max_inventory_index() do
             add_inventory(index --[[@as defines.inventory]], scan_template.supported, scan_template.inventories)
         end
     end
 
-    if scan_entity.burner then
-        add_inventory(scan_entity.burner.inventory.index, BURNER_TYPE_SUPPORTED, BURNER_TYPE_INVENTORIES)
-        add_inventory(scan_entity.burner.burnt_result_inventory.index, BURNER_TYPE_SUPPORTED, BURNER_TYPE_INVENTORIES)
+    if scan_delegate.burner then
+        add_inventory(scan_delegate.burner.inventory.index, BURNER_TYPE_SUPPORTED, BURNER_TYPE_INVENTORIES)
+        add_inventory(scan_delegate.burner.burnt_result_inventory.index, BURNER_TYPE_SUPPORTED, BURNER_TYPE_INVENTORIES)
     end
 
-    if scan_entity.fluids_count > 0 then
+    if scan_delegate.fluids_count > 0 then
         add_contributor(const.inventory_names.fluid, const.inventory_names.fluid)
+    end
+
+    if scan_delegate.grid then
+        add_contributor(const.inventory_name.grid, const.inventory_name.grid)
     end
 
     -- enable elements if needed
@@ -179,9 +178,19 @@ function InventorySensor.reconfigure(sensor_data, config)
     if not config then return end
 
     sensor_data.config.enabled = config.enabled
-    sensor_data.config.read_grid = config.read_grid
     sensor_data.config.inventory_status = config.inventory_status
-    sensor_data.config.contributors = util.copy(config.contributors)
+    sensor_data.config.contributors = util.copy(config.contributors) or {}
+
+    -- old (pre-2.0.0) config blueprinting
+    ---@diagnostic disable-next-line:undefined-field
+    if sensor_data.config.read_grid then
+        sensor_data.config.contributors[const.inventory_name.grid] = sensor_data.config.contributors[const.inventory_name.grid] or {
+            name = assert(const.inventories[const.inventory_name.grid]),
+            enabled = true,
+            mode = 'quantity',
+            inverted = false,
+        }
+    end
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -207,7 +216,6 @@ function InventorySensor.new(sensor_entity, config)
         inventories = {},
         config = {
             enabled = true,
-            read_grid = false,
             inventory_status = false,
             contributors = {},
         },
@@ -348,14 +356,31 @@ function InventorySensor.load(sensor_data, force)
     local scan_template = locate_scan_template(scan_entity)
     if not scan_template then return false end
 
+    -- some entities (e.g. a cargo bay) want to actually delegate the entity to scan
+    local scan_delegate = scan_template.delegate and scan_template.delegate(scan_entity) or scan_entity
+    if not (scan_delegate and scan_delegate.valid) then return false end
+
     ---@type table<string, number>
     local cache = {}
 
     ---@type LogisticFilter[]
     local filters = {}
 
+    ---@type fun(filter: LogisticFilter)
+    local sink = function(filter)
+        local signal = assert(filter.value)
+        local key = ('%s:%s:%s'):format(signal.name, signal.type or 'item', signal.quality or 'normal')
+        local index = cache[key]
+        if not index then
+            table.insert(filters, filter)
+            cache[key] = #filters
+        else
+            filters[index].min = filters[index].min + filter.min
+        end
+    end
+
     ---@type inventory_sensor.InventoryStatus
-    local totalInventoryStatus = {
+    local inventoryStatus = {
         blockedSlotIndex = 0,
         emptySlotCount = 0,
         filledSlotCount = 0,
@@ -371,113 +396,12 @@ function InventorySensor.load(sensor_data, force)
         emptyFluidsCount = 0,
     }
 
-    ---@type fun(filter: LogisticFilter)
-    local sink = function(filter)
-        local signal = assert(filter.value)
-        local key = ('%s:%s:%s'):format(signal.name, signal.type or 'item', signal.quality or 'normal')
-        local index = cache[key]
-        if not index then
-            table.insert(filters, filter)
-            cache[key] = #filters
-        else
-            filters[index].min = filters[index].min + filter.min
+    ---@param status inventory_sensor.InventoryStatus
+    local status_sink = function(status)
+        for key, value in pairs(status) do
+            inventoryStatus[key] = inventoryStatus[key] + value
         end
     end
-
-    -- local burner = scan_entity.burner
-    -- local remaining_fuel = 0
-
-    -- load inventories for the entity
-    -- if table_size(sensor_data.state.inventories) > 0 then
-    --     for inventory_index in pairs(sensor_data.state.inventories) do
-    --         local inventory = scan_entity.get_inventory(inventory_index)
-    --         if inventory and inventory.valid then
-    --             ---@type inventory_sensor.InventoryStatus
-    --             local inventoryStatus = {
-    --                 totalItemCount = 0,
-    --             }
-
-    --             if sensor_data.config.inventory_status then
-    --                 inventoryStatus.totalSlotCount = #inventory
-    --                 inventoryStatus.emptySlotCount = inventory.count_empty_stacks()
-    --                 inventoryStatus.filledSlotCount = inventoryStatus.totalSlotCount - inventoryStatus.emptySlotCount
-    --                 inventoryStatus.filteredSlotCount = inventory.count_empty_stacks(true) - inventoryStatus.emptySlotCount
-
-    --                 if inventory.supports_bar() then
-    --                     inventoryStatus.blockedSlotIndex = (inventory.get_bar() < inventoryStatus.totalSlotCount) and inventory.get_bar() or 0
-    --                 end
-    --             end
-
-    --             for _, item in pairs(inventory.get_contents()) do
-    --                 sink { value = { name = item.name, type = 'item', quality = item.quality or 'normal' }, min = item.count }
-
-    --                 if sensor_data.config.inventory_status then
-    --                     inventoryStatus.totalItemCount = inventoryStatus.totalItemCount + item.count -- accumulate the amount of all items
-    --                 end
-
-    --                 if burner and (inventory_index == defines.inventory.fuel) then
-    --                     local fuel = prototypes.item[item.name]
-    --                     if fuel and fuel.fuel_value then
-    --                         remaining_fuel = remaining_fuel + math.max((fuel.fuel_value / 1e6) * item.count, 0)
-    --                     end
-    --                 end
-    --             end
-
-    --             for k, v in pairs(inventoryStatus) do
-    --                 totalInventoryStatus[k] = totalInventoryStatus[k] + v
-    --             end
-    --         end
-    --     end
-    -- end
-
-    -- get fluids
-    -- for i = 1, scan_entity.fluids_count, 1 do
-    --     local fluid = scan_entity.get_fluid(i)
-    --     if sensor_data.config.inventory_status then
-    --         ---@type inventory_sensor.InventoryStatus
-    --         local fluidStatus = {}
-    --         fluidStatus.availableFluidsCount = fluid and (fluid.amount > 0) and 1 or 0
-    --         fluidStatus.totalFluidAmount = fluid and fluid.amount or 0
-    --         local entity_capacity = scan_entity.prototype.get_fluid_capacity()
-    --         if entity_capacity > 0 then
-    --             fluidStatus.totalFluidsCount = 1
-    --             fluidStatus.totalFluidCapacity = entity_capacity
-    --             fluidStatus.emptyFluidsCount = fluidStatus.totalFluidsCount - fluidStatus.availableFluidsCount
-    --         end
-
-    --         if scan_entity.fluidbox and (#scan_entity.fluidbox >= i) then
-    --             fluidStatus.totalFluidsCount = (scan_entity.fluidbox.get_capacity(i) > 0) and 1 or 0
-    --             fluidStatus.totalFluidCapacity = scan_entity.fluidbox.get_capacity(i) or 0
-    --             fluidStatus.emptyFluidsCount = fluidStatus.totalFluidsCount - fluidStatus.availableFluidsCount
-    --         end
-
-    --         for k, v in pairs(fluidStatus) do
-    --             totalInventoryStatus[k] = totalInventoryStatus[k] + v
-    --         end
-
-    --         if fluid then
-    --             sink { value = { type = 'fluid', name = fluid.name, quality = 'normal' }, min = math.ceil(fluid.amount) }
-    --         end
-    --     end
-    -- end
-
-    -- -- add virtual signals for inventory
-    -- if sensor_data.config.inventory_status then
-    --     if totalInventoryStatus.totalSlotCount ~= 0 then
-    --         totalInventoryStatus.usedSlotPercentage = totalInventoryStatus.filledSlotCount * 100 / totalInventoryStatus.totalSlotCount
-    --     end
-
-    --     if totalInventoryStatus.totalFluidCapacity ~= 0 then
-    --         totalInventoryStatus.usedFluidPercentage = totalInventoryStatus.totalFluidAmount * 100 / totalInventoryStatus.totalFluidCapacity
-    --     end
-
-    --     for signal_name, field_name in pairs(const.inventory_status_signals) do
-    --         local value = totalInventoryStatus[field_name]
-    --         if value ~= 0 then
-    --             sink { value = { type = 'virtual', name = 'signal-' .. signal_name, quality = 'normal' }, min = value }
-    --         end
-    --     end
-    -- end
 
     -- add specific static signals
     if scan_template.signals then
@@ -487,19 +411,47 @@ function InventorySensor.load(sensor_data, force)
         end
     end
 
+    ---@type inventory_sensor.ContributorTemplate
+    local contributor_template = {
+        sensor_data = sensor_data,
+        scan_entity = scan_delegate,
+        sink = sink,
+        status_sink = status_sink,
+    }
+
     -- add custom items
     for name, contributor_info in pairs(sensor_data.state.contributors) do
         local contributor_config = sensor_data.config.contributors[name]
         if contributor_info.enabled or (contributor_config and contributor_config.enabled) then
+            contributor_template.contributor_info = contributor_config
             local contributor = assert(sensor_entities.contributors[name])
-            contributor(sensor_data, sink, contributor_config)
+            contributor(contributor_template)
         end
     end
 
     -- add globals
+    contributor_template.contributor_info = nil
     for _, name in pairs(sensor_entities.global_contributors) do
         local contributor = assert(sensor_entities.contributors[name])
-        contributor(sensor_data, sink)
+        contributor(contributor_template)
+    end
+
+    -- add virtual status signals
+    if sensor_data.config.inventory_status then
+        if inventoryStatus.totalSlotCount ~= 0 then
+            inventoryStatus.usedSlotPercentage = math.floor(.5 + (inventoryStatus.filledSlotCount * 100 / inventoryStatus.totalSlotCount))
+        end
+
+        if inventoryStatus.totalFluidCapacity ~= 0 then
+            inventoryStatus.usedFluidPercentage = math.floor(.5 + (inventoryStatus.totalFluidAmount * 100 / inventoryStatus.totalFluidCapacity))
+        end
+
+        for signal_name, field_name in pairs(const.inventory_status_signals) do
+            local value = inventoryStatus[field_name]
+            if value ~= 0 then
+                sink { value = { type = 'virtual', name = 'signal-' .. signal_name, quality = 'normal' }, min = value }
+            end
+        end
     end
 
     if Framework.settings:startup_setting('debug_mode') then
@@ -541,7 +493,7 @@ function InventorySensor.connect(sensor_data, entity)
     if not scan_controller then return false end
 
     sensor_data.scan_entity = entity
-    sensor_data.scan_interval = scan_controller.interval or scan_frequency.stationary -- unset scan interval -> stationary
+    sensor_data.scan_interval = scan_controller.interval or const.scan_frequency.stationary -- unset scan interval -> stationary
     sensor_data.config.scan_entity_id = entity.unit_number
 
     local entity_key = get_entity_key(entity)
@@ -553,7 +505,6 @@ function InventorySensor.connect(sensor_data, entity)
     sensor_data.state.reconnect_key = entity_key
 
     InventorySensor.update_supported(sensor_data, scan_controller)
-
     InventorySensor.load(sensor_data, true)
 
     if Framework.settings:startup_setting('debug_mode') then

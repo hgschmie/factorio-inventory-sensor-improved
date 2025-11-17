@@ -10,8 +10,8 @@ local table = require('stdlib.utils.table')
 -- globals
 --------------------------------------------------------------------------------
 
----@enum scan_frequency
-scan_frequency = {
+---@enum inventory_sensor.scan_frequency
+local scan_frequency = {
     stationary = 300, -- scan every five seconds
     mobile = 30,      -- scan every 1/2 of a second
     empty = 120       -- scan every 2 seconds
@@ -29,6 +29,7 @@ Constants.root = '__inventory-sensor-improved__'
 Constants.gfx_location = Constants.root .. '/graphics/'
 Constants.order = 'c[combinators]-d[inventory-sensor]'
 Constants.config_tag_name = 'is_config'
+Constants.scan_frequency = scan_frequency
 
 Constants.debug_lifetime = 10
 Constants.debug_scan_lifetime = 2
@@ -83,6 +84,7 @@ Constants.signal_names = {
     temperature_signal = 'inv-sensor-temperature',
     fuel_signal = 'inv-sensor-fuel',
     charge_signal = 'inv-sensor-charge',
+    speed_signal = 'inv-sensor-speed',
     car_detected_signal = 'inv-sensor-detected-car',
     tank_detected_signal = 'inv-sensor-detected-tank',
     spider_detected_signal = 'inv-sensor-detected-spider',
@@ -129,7 +131,7 @@ Constants.inventories = {}
 for _, name in pairs {
     'charge', 'crafting_progress', 'grid', 'fluid', 'research_progress', 'silo_progress',
     'contents', 'ammo', 'trash', 'cargo', 'input', 'output', 'modules', 'dump',
-    'temperature', 'burner_fuel', 'trunk',
+    'temperature', 'burner_fuel', 'trunk', 'pump_speed', 'arm',
 } do
     Constants.inventories[name] = { Constants:locale('inventory-name-' .. name) }
 end
