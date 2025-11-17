@@ -14,24 +14,28 @@ Uicons by [Flaticon](https://www.flaticon.com/uicons) provided the signal icons
 
 ## Features
 
+Version 2.0.0 is a major rewrite:
+
+* enable / disable any inventory that an entity has. Fluids, Grid etc. are shown as inventories
+* signals can be inverted and just return 1 instead of the actual value
 * GUI provides updating view of the signals created by the sensor
-* enable / disable equipment grid reading on a per-sensor basis
+* supports many more entities (pumps, heat-pipes, asteroid collector)
 * can be rotated and moved (with [Even Pickier Dollies](https://mods.factorio.com/mod/even-pickier-dollies))
 * supports blueprinting, cloning and settings copying
 * debug mode shows scan area and connect/disconnect events
 
 ### Virtual signals about scanned entities
 
-When enabling the `Generate inventory status signals` setting in the GUI, the sensor will create a number of virtual signals that describe the inventories of the connected entity. Note that for entities that have more than inventory (e.g. Assembly Machines), this is a summary across all inventories and not just for a single inventory.
+When enabling the `Generate inventory status signals` setting in the GUI, the sensor will create a number of virtual signals that describe the inventories of the connected entity.
 
 Item specific signals:
 
-* B - slot number for the "red bar" (blocked slots). Note: Only one inventory can have blocked slots
-* E - Sum of all empty slots in the inventories
-* F - Sum of all used slots in the inventories
-* T - Total number of slots in all inventories
-* P - Percentage of slots used (ignoring filtered and blocked slots) across all inventories
-* X - Total number of filtered slots (in inventories that use a filter)
+* B - slot number for the "red bar" (blocked slots). If multiple inventories are selected that have blocked slots, the signal is undefined.
+* E - Sum of all empty slots in the selected inventories
+* F - Sum of all used slots in the selected inventories
+* T - Total number of slots in all selected inventories
+* P - Percentage of slots used (ignoring filtered and blocked slots), calculated from the values above
+* X - Total number of filtered slots (across seleted inventories that use a filter)
 * I - Total number of items in all inventories
 
 Fluid signals:

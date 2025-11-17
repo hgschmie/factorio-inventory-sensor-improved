@@ -2,6 +2,14 @@
 Version: 2.0.0
 Date: ????
   Changes:
+    - Inventories are now listed and can be selected separately
+    - Supports invert and quantity/one values for signals
+    - Everything that is a burner (consumes fuel / generates spent fuel) can not select fuel / spent fuel inventories
+    - Support reading `electric-energy-interface` (same as accumulator)
+    - Support reading `heat-pipe` and `heat-interface` for temperature
+    - Support reading `pump` and `offshore-pump` for speed and content
+    - Support reading `asteroid-collector` and `space-platform-hub`
+    - Support reading `cargo-bay` (proxy for `space-platform-hub` or `cargo-landing-pad`)
 ---------------------------------------------------------------------------------------------------
 Version: 1.5.2
 Date: 2025-09-13

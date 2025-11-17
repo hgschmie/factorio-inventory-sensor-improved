@@ -215,7 +215,6 @@ function Gui.getUi(gui)
                                 name = 'inventories',
                                 column_count = 3,
                                 style_mods = {
-                                    -- top_margin = -8,         -- pull the table a bit closer to the label above
                                     horizontal_spacing = 24, -- space the elements in the table out
                                 },
                             },
