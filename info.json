@@ -13,7 +13,20 @@
   "package": {
     "git_publish_branch": "main",
     "readme": "README.md",
-    "gallery": [ ".portal/screenshot-1.png", ".portal/screenshot-2.png", ".portal/screenshot-3.png" ],
+    "gallery": [
+      ".portal/screenshot-1.png",
+      ".portal/screenshot-2.png",
+      ".portal/screenshot-3.png",
+      ".portal/screenshot-4.png",
+      ".portal/screenshot-5.png",
+      ".portal/screenshot-6.png",
+      ".portal/screenshot-7.png",
+      ".portal/screenshot-8.png",
+      ".portal/screenshot-9.png",
+      ".portal/screenshot-10.png",
+      ".portal/screenshot-11.png",
+      ".portal/screenshot-12.png"
+    ],
     "sync_portal_details": true
   }
 }
