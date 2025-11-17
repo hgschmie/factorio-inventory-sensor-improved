@@ -66,6 +66,17 @@ local signals = {
     },
     {
         type = 'virtual-signal',
+        name = const.signal_names.power_signal,
+        icons = {
+            { icon = base_icon_png('signal/signal_green'), icon_size = 64, icon_mipmaps = 4 },
+            { icon = const:png('icon/power'),           icon_size = 64, icon_mipmaps = 4 },
+        },
+        icon_size = 32,
+        subgroup = 'sensor-signals',
+        order = 'is-bf',
+    },
+    {
+        type = 'virtual-signal',
         name = const.signal_names.car_detected_signal,
         icons = {
             { icon = base_icon_png('signal/signal_green'), icon_size = 64, icon_mipmaps = 4 },

@@ -85,6 +85,7 @@ Constants.signal_names = {
     fuel_signal = 'inv-sensor-fuel',
     charge_signal = 'inv-sensor-charge',
     speed_signal = 'inv-sensor-speed',
+    power_signal = 'inv-sensor-power',
     car_detected_signal = 'inv-sensor-detected-car',
     tank_detected_signal = 'inv-sensor-detected-tank',
     spider_detected_signal = 'inv-sensor-detected-spider',
@@ -131,7 +132,7 @@ Constants.inventories = {}
 for _, name in pairs {
     'charge', 'crafting_progress', 'grid', 'fluid', 'research_progress', 'silo_progress',
     'contents', 'ammo', 'trash', 'cargo', 'input', 'output', 'modules', 'dump',
-    'temperature', 'burner_fuel', 'trunk', 'pump_speed', 'arm',
+    'temperature', 'burner_fuel', 'trunk', 'pump_speed', 'arm', 'power',
 } do
     Constants.inventories[name] = { Constants:locale('inventory-name-' .. name) }
 end

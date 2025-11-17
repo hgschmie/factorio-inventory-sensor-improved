@@ -186,7 +186,13 @@ local contributors = {
         contributor.sink { value = const.signals.speed_signal, min = pump_speed }
     end,
 
+    [const.inventory_names.power] = function(contributor)
+        local scan_entity = contributor.scan_entity
 
+        local power = scan_entity.energy_generated_last_tick * 60
+
+        contributor.sink { value = const.signals.power_signal, min = math.floor(.5 + power) }
+    end,
 }
 
 for name, index in pairs(defines.inventory) do
@@ -396,6 +402,13 @@ local ENTITY_TYPES = {
             return entity.cargo_bay_connection_owner
         end,
     },
+
+    generator_type = {
+        interval = const.scan_frequency.stationary,
+        contributors = {
+            [const.inventory_names.power] = true,
+        },
+    },
 }
 
 for _, entity_type in pairs(ENTITY_TYPES) do
@@ -452,7 +465,7 @@ local supported_entities = {
     lab = create_entity(ENTITY_TYPES.lab_type),
 
     reactor = create_entity(ENTITY_TYPES.stationary_type),
-    generator = create_entity(ENTITY_TYPES.stationary_type),
+    generator = create_entity(ENTITY_TYPES.generator_type),
     boiler = create_entity(ENTITY_TYPES.stationary_type),
 
     roboport = create_entity(ENTITY_TYPES.roboport_type),
