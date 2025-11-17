@@ -181,9 +181,9 @@ local contributors = {
     [const.inventory_names.pump_speed] = function(contributor)
         local scan_entity = contributor.scan_entity
 
-        local pump_speed = scan_entity.pumped_last_tick
+        local pump_speed = scan_entity.pumped_last_tick * 60
 
-        contributor.sink { value = const.signals.speed_signal, min = pump_speed }
+        contributor.sink { value = const.signals.speed_signal, min = math.floor(pump_speed + .5) }
     end,
 
     [const.inventory_names.power] = function(contributor)
