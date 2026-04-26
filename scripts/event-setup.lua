@@ -49,14 +49,14 @@ local function onEntityDeleted(event)
     assert(entity.unit_number)
 
     This.SensorController:destroy(entity.unit_number)
-    Framework.gui_manager:destroy_gui_by_entity_id(entity.unit_number)
+    Framework.gui_manager:destroyGuiByEntityId(entity.unit_number)
 end
 
 ---@param event EventData.on_object_destroyed
 local function onObjectDestroyed(event)
     -- main entity destroyed
     This.SensorController:destroy(event.useful_id)
-    Framework.gui_manager:destroy_gui_by_entity_id(event.useful_id)
+    Framework.gui_manager:destroyGuiByEntityId(event.useful_id)
 end
 
 --------------------------------------------------------------------------------

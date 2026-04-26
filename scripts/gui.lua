@@ -284,8 +284,9 @@ end
 --- close the UI (button or shortcut key)
 ---
 ---@param event EventData.on_gui_click|EventData.on_gui_closed
-function Gui.onWindowClosed(event)
-    Framework.gui_manager:destroy_gui(event.player_index)
+---@param gui framework.gui
+function Gui.onWindowClosed(event, gui)
+    Framework.gui_manager:destroyGui(event.player_index, gui.type)
 end
 
 local on_off_values = {
@@ -384,9 +385,9 @@ local function update_config_gui_state(gui, sensor_data)
     local inventory_element = assert(gui:find_element('inventories'))
     gui:remove_children('inventories')
 
-    local has_inventories = table_size(sensor_data.config.contributors) > 0
+    local has_inventories    = table_size(sensor_data.config.contributors) > 0
 
-    local inventory_header = gui:find_element('inventory-header')
+    local inventory_header   = gui:find_element('inventory-header')
     inventory_header.visible = has_inventories
 
     local inventory_status   = gui:find_element('inventory-status-signals')
@@ -516,9 +517,6 @@ function Gui.onGuiOpened(event)
     local player = Player.get(event.player_index)
     if not player then return end
 
-    -- close an eventually open gui
-    Framework.gui_manager:destroy_gui(event.player_index)
-
     local entity = event and event.entity --[[@as LuaEntity]]
     if not entity then
         player.opened = nil
@@ -543,7 +541,7 @@ function Gui.onGuiOpened(event)
         last_state = nil,
     }
 
-    local gui = Framework.gui_manager:create_gui {
+    local gui = Framework.gui_manager:createGui {
         type = GUI_NAME,
         player_index = event.player_index,
         parent = player.gui.screen,
@@ -567,7 +565,7 @@ end
 ----------------------------------------------------------------------------------------------------
 
 local function init_gui()
-    Framework.gui_manager:register_gui_type(GUI_NAME, get_gui_event_definition())
+    Framework.gui_manager:registerGuiType(GUI_NAME, get_gui_event_definition())
 
     local match_inventory_sensor = Matchers:matchEventEntityName(const.inventory_sensor_name)
     local match_ghost_inventory_sensor = Matchers:matchEventEntityGhostName(const.inventory_sensor_name)
