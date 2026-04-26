@@ -259,7 +259,7 @@ end
 function Gui.render_preview(gui, sensor_data)
     if not sensor_data then return end
 
-    local signal_view = gui:find_element('signal-view')
+    local signal_view = gui:findElement('signal-view')
     assert(signal_view)
 
     signal_view.clear()
@@ -360,13 +360,13 @@ local function update_config_gui_state(gui, sensor_data)
         or sensor_data.state.status                                                           -- if enabled, the registered state takes precedence if present
         or defines.entity_status.working                                                      -- otherwise, it is working
 
-    local entity_lamp = gui:find_element('entity-lamp')
+    local entity_lamp = gui:findElement('entity-lamp')
     entity_lamp.sprite = tools.STATUS_SPRITES[sensor_status]
 
-    local entity_status = gui:find_element('entity-status')
+    local entity_status = gui:findElement('entity-status')
     entity_status.caption = { tools.STATUS_NAMES[sensor_status] }
 
-    local status = gui:find_element('status')
+    local status = gui:findElement('status')
     if sensor_data.config.enabled then
         if (sensor_data.scan_entity and sensor_data.scan_entity.valid) then
             status.caption = { const:locale('reading'), sensor_data.scan_entity.localised_name, sensor_data.scan_entity.unit_number }
@@ -378,20 +378,20 @@ local function update_config_gui_state(gui, sensor_data)
     end
 
     local enabled = sensor_data.config.enabled
-    local on_off = gui:find_element('on-off')
+    local on_off = gui:findElement('on-off')
     on_off.switch_state = values_on_off[enabled]
 
     -- update inventories
 
-    local inventory_element = assert(gui:find_element('inventories'))
-    gui:remove_children('inventories')
+    local inventory_element = assert(gui:findElement('inventories'))
+    gui:removeChildren('inventories')
 
     local has_inventories    = table_size(sensor_data.config.contributors) > 0
 
-    local inventory_header   = gui:find_element('inventory-header')
+    local inventory_header   = gui:findElement('inventory-header')
     inventory_header.visible = has_inventories
 
-    local inventory_status   = gui:find_element('inventory-status-signals')
+    local inventory_status   = gui:findElement('inventory-status-signals')
     inventory_status.state   = sensor_data.config.inventory_status or false
     inventory_status.enabled = enabled
     inventory_status.visible = has_inventories
@@ -405,7 +405,7 @@ local function update_config_gui_state(gui, sensor_data)
             local config_enabled = enabled and (contributor_state and true or false)
 
             -- each row has three children: checkbox, radiobuttons and invert
-            gui:add_child_elements(inventory_element, {
+            gui:addChildElements(inventory_element, {
                 {
                     type = 'checkbox',
                     caption = contributor_info.name,
@@ -466,12 +466,12 @@ end
 local function update_gui_state(gui, sensor_data)
     Gui.render_preview(gui, sensor_data)
 
-    local connections = gui:find_element('connections')
+    local connections = gui:findElement('connections')
     connections.caption = { 'gui-control-behavior.not-connected' }
     for _, color in pairs { 'red', 'green' } do
         local wire_connector = sensor_data.sensor_entity.get_wire_connector(defines.wire_connector_id['circuit_' .. color], false)
 
-        local wire_connection = gui:find_element('connection-' .. color)
+        local wire_connection = gui:findElement('connection-' .. color)
         if wire_connector and wire_connector.connection_count > 0 then
             connections.caption = { 'gui-control-behavior.connected-to-network' }
             wire_connection.visible = true
