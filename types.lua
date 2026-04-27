@@ -80,7 +80,6 @@
 
 ---@class inventory_sensor.Storage
 ---@field is inventory_sensor.Data[]
----@field count integer
 
 ----------------------------------------------------------------------------------------------------
 -- supported_entities.lua

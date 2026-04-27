@@ -28,12 +28,6 @@ end
 -- attribute getters/setters
 ------------------------------------------------------------------------
 
---- Returns the registered total count.
----@return integer count The total count of inventory sensors
-function InventorySensorController:totalCount()
-    return storage.is_data.count
-end
-
 --- Returns data for all inventory sensors.
 ---@return inventory_sensor.Data[] entities
 function InventorySensorController:entities()
@@ -56,12 +50,6 @@ function InventorySensorController:setEntity(entity_id, sensor_data)
     if (sensor_data) then assert(Sensor.validate(sensor_data, entity_id)) end
 
     storage.is_data.is[entity_id] = sensor_data
-    storage.is_data.count = storage.is_data.count + ((sensor_data and 1) or -1)
-
-    if storage.is_data.count < 0 then
-        storage.is_data.count = table_size(storage.is_data.is)
-        Framework.logger:logf('Inventory Sensor count got negative (bug), size is now: %d', storage.is_data.count)
-    end
 end
 
 ------------------------------------------------------------------------

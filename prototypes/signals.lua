@@ -123,7 +123,7 @@ local signals = {
             { icon = base_icon_png('locomotive'),          icon_size = 64, icon_mipmaps = 4, scale = 0.375 },
         },
         subgroup = 'sensor-signals',
-        order = 'is-dc',
+        order = 'is-de',
     }
 }
 

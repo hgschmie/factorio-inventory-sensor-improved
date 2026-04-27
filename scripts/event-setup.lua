@@ -20,10 +20,7 @@ local Migration = require('scripts.migration')
 ---@param event EventData.on_built_entity | EventData.on_robot_built_entity | EventData.script_raised_revive | EventData.script_raised_built
 local function onEntityCreated(event)
     local entity = event and event.entity
-
-    assert(entity)
-
-    if not (entity and entity.valid) then return end
+    assert(entity and entity.valid)
 
     -- register entity for destruction
     script.register_on_object_destroyed(entity)

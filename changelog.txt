@@ -2,6 +2,7 @@
 Version: 2.0.1
 Date: ????
   Changes:
+    - fix some minor issues (correctness fixes, ambiguities etc.)
 ---------------------------------------------------------------------------------------------------
 Version: 2.0.0
 Date: 2025-11-16

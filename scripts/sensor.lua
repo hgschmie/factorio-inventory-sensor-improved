@@ -213,7 +213,6 @@ function InventorySensor.new(sensor_entity, config)
     ---@type inventory_sensor.Data
     local data = {
         sensor_entity = sensor_entity,
-        inventories = {},
         config = {
             enabled = true,
             inventory_status = false,
