@@ -134,6 +134,7 @@ local function onTick()
     local entities = This.SensorController:entities()
     local process_count = math.ceil(table_size(entities) / interval)
     local index = storage.last_tick_entity
+    if index and not entities[index] then index = nil end
     local entity
 
     if table_size(entities) == 0 then
