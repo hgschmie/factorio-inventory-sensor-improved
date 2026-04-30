@@ -498,15 +498,23 @@ function Gui.guiUpdater(gui)
     ---@type inventory_sensor.GuiContext
     local context = gui.context
 
-    if not (context.last_config and table.compare(context.last_config, sensor_data.config))
-        or not (context.last_state and table.compare(context.last_state, sensor_data.state)) then
-        update_config_gui_state(gui, sensor_data)
-        context.last_config = util.copy(sensor_data.config)
-        context.last_state = util.copy(sensor_data.state)
-    end
-
     -- always update wire state and preview
     update_gui_state(gui, sensor_data)
+
+    local refresh_config = not (context.last_config and table.compare(context.last_config, sensor_data.config))
+    local refresh_state = not (context.last_state and table.compare(context.last_state, sensor_data.state))
+
+    if refresh_config or refresh_state then
+        update_config_gui_state(gui, sensor_data)
+    end
+
+    if refresh_config then
+        context.last_config = util.copy(sensor_data.config)
+    end
+
+    if refresh_state then
+        context.last_state = util.copy(sensor_data.state)
+    end
 
     return true
 end

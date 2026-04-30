@@ -28,7 +28,7 @@ local entity_prototype = {
     order = const.order,
 
     -- ConstantCombinatorPrototype
----@diagnostic disable-next-line: undefined-global
+    ---@diagnostic disable-next-line: undefined-global
     sprites = make_4way_animation_from_spritesheet {
         layers =
         {
