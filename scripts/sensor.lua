@@ -71,43 +71,45 @@ local function get_entity_key(entity)
     return entity.type .. '__' .. entity.name
 end
 
+---@class inventory_sensor.AddContributorArgs
+---@field key string
+---@field name string
+---@field always_enabled boolean?
+
 -- Create a set of contributors (in state) and a subset that is configurable (in config).
 -- Reconnect with and existing config if the same type of entity was reconnected
 ---@param sensor_data inventory_sensor.Data
 ---@param scan_template inventory_sensor.ScanTemplate
 function InventorySensor.update_supported(sensor_data, scan_template)
-    local scan_entity = sensor_data.scan_entity
     -- some entities (e.g. cargo bay) delegate to a different entity
-    local scan_delegate = scan_template.delegate and scan_template.delegate(scan_entity) or scan_entity
+    local scan_entity = scan_template.delegate and scan_template.delegate(sensor_data.scan_entity) or sensor_data.scan_entity
 
-    if not (scan_delegate and scan_delegate.valid) then return end
+    if not (scan_entity and scan_entity.valid) then return end
 
     local configured_contributors = sensor_data.config.contributors or {}
 
-    ---@param key string
-    ---@param name string
-    ---@param enabled boolean?
-    local add_contributor = function(key, name, enabled)
-        assert(sensor_entities.contributors[key])
+    ---@param args inventory_sensor.AddContributorArgs
+    local add_contributor = function(args)
+        assert(sensor_entities.contributors[args.key])
 
         ---@type inventory_sensor.ContributorInfo
-        sensor_data.state.contributors[key] = {
-            name = assert(const.inventories[name]),
-            enabled = enabled or false,
+        sensor_data.state.contributors[args.key] = {
+            name = assert(const.inventories[args.name]),
+            enabled = args.always_enabled or false,
         }
 
-        -- enabled means that this contributor is unconditionally enabled
+        -- always_enabled means that this contributor is unconditionally enabled
         -- otherwise needs to be a config item from the GUI
-        if enabled then return end
+        if args.always_enabled then return end
 
-        local contributor_info = configured_contributors[key] or {
-            name = assert(const.inventories[name]),
-            enabled = enabled or false,
+        local contributor_info = configured_contributors[args.key] or {
+            name = assert(const.inventories[args.name]),
+            enabled = args.always_enabled or false,
             mode = 'quantity',
             inverted = false,
         }
 
-        sensor_data.config.contributors[key] = contributor_info
+        sensor_data.config.contributors[args.key] = contributor_info
     end
 
     ---@param index defines.inventory?
@@ -118,10 +120,13 @@ function InventorySensor.update_supported(sensor_data, scan_template)
         local key = supported[index]
         if not key then return end
         -- check that the entity actually has the inventory
-        local inventory = scan_delegate.get_inventory(index)
+        local inventory = scan_entity.get_inventory(index)
         if not (inventory and inventory.valid and #inventory > 0) then return end
 
-        add_contributor(key, assert(inventories[key]))
+        add_contributor {
+            key = key,
+            name = assert(inventories[key]),
+        }
     end
 
     -- turn everything off first, enable default contributors
@@ -130,28 +135,38 @@ function InventorySensor.update_supported(sensor_data, scan_template)
 
     if scan_template.contributors then
         for name, enabled in pairs(scan_template.contributors) do
-            add_contributor(name, name, enabled)
+            add_contributor {
+                key = name,
+                name = name,
+                always_enabled = enabled
+            }
         end
     end
 
     -- update the available inventories
     if scan_template.inventories then
-        for index = 1, scan_delegate.get_max_inventory_index() do
+        for index = 1, scan_entity.get_max_inventory_index() do
             add_inventory(index --[[@as defines.inventory]], scan_template.supported, scan_template.inventories)
         end
     end
 
-    if scan_delegate.burner then
-        add_inventory(scan_delegate.burner.inventory.index, BURNER_TYPE_SUPPORTED, BURNER_TYPE_INVENTORIES)
-        add_inventory(scan_delegate.burner.burnt_result_inventory.index, BURNER_TYPE_SUPPORTED, BURNER_TYPE_INVENTORIES)
+    if scan_entity.burner then
+        add_inventory(scan_entity.burner.inventory.index, BURNER_TYPE_SUPPORTED, BURNER_TYPE_INVENTORIES)
+        add_inventory(scan_entity.burner.burnt_result_inventory.index, BURNER_TYPE_SUPPORTED, BURNER_TYPE_INVENTORIES)
     end
 
-    if scan_delegate.fluids_count > 0 then
-        add_contributor(const.inventory_names.fluid, const.inventory_names.fluid)
+    if scan_entity.fluids_count > 0 then
+        add_contributor {
+            key = const.inventory_names.fluid,
+            name = const.inventory_names.fluid
+        }
     end
 
-    if scan_delegate.grid then
-        add_contributor(const.inventory_names.grid, const.inventory_names.grid)
+    if scan_entity.grid then
+        add_contributor {
+            key = const.inventory_names.grid,
+            name = const.inventory_names.grid
+        }
     end
 
     -- enable elements if needed
@@ -171,7 +186,8 @@ function InventorySensor.update_supported(sensor_data, scan_template)
     end
 
     sensor_data.state.reset_on_connect = true
-    sensor_data.state.reconnect_key = get_entity_key(scan_entity)
+    -- entity key is always the entity itself
+    sensor_data.state.reconnect_key = get_entity_key(sensor_data.scan_entity)
 end
 
 ---@param sensor_data inventory_sensor.Data
@@ -341,7 +357,7 @@ end
 --- Loads the state of the connected entity into the sensor.
 ---@param sensor_data inventory_sensor.Data
 ---@param force boolean?
----@return boolean entity was loaded
+---@return boolean loaded_entity entity was loaded
 function InventorySensor.load(sensor_data, force)
     local load_time = sensor_data.load_time or 0
     if not (force or (game.tick - load_time >= Framework.settings:runtime_setting(const.settings_update_interval_name))) then return false end
@@ -351,15 +367,15 @@ function InventorySensor.load(sensor_data, force)
     section.filters = {}
 
     if not sensor_data.config.enabled then return false end
+
     local scan_entity = sensor_data.scan_entity
-    if not (scan_entity and scan_entity.valid) then return false end
 
     local scan_template = locate_scan_template(scan_entity)
     if not scan_template then return false end
 
     -- some entities (e.g. a cargo bay) want to actually delegate the entity to scan
-    local scan_delegate = scan_template.delegate and scan_template.delegate(scan_entity) or scan_entity
-    if not (scan_delegate and scan_delegate.valid) then return false end
+    scan_entity = scan_template.delegate and scan_template.delegate(scan_entity) or scan_entity
+    if not (scan_entity and scan_entity.valid) then return false end
 
     ---@type table<string, number>
     local cache = {}
@@ -415,7 +431,7 @@ function InventorySensor.load(sensor_data, force)
     ---@type inventory_sensor.ContributorTemplate
     local contributor_template = {
         sensor_data = sensor_data,
-        scan_entity = scan_delegate,
+        scan_entity = scan_entity,
         sink = sink,
         status_sink = status_sink,
     }
@@ -493,6 +509,7 @@ function InventorySensor.connect(sensor_data, entity)
     local scan_controller = locate_scan_template(entity)
     if not scan_controller then return false end
 
+    sensor_data.state.status = sensor_data.sensor_entity.status
     sensor_data.scan_entity = entity
     sensor_data.scan_interval = scan_controller.interval or const.scan_frequency.stationary -- unset scan interval -> stationary
     sensor_data.config.scan_entity_id = entity.unit_number
