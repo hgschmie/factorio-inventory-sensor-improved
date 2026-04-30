@@ -2,6 +2,8 @@
 -- data phase 3
 ------------------------------------------------------------------------
 
+local util = require('util')
+
 require('lib.init')
 
 local const = require('lib.constants')
@@ -17,4 +19,5 @@ if Framework.settings:startup_setting(const.settings_update_inventory_sensors_na
     end
 end
 
+---@diagnostic disable-next-line: undefined-field
 Framework.post_data_final_fixes_stage()

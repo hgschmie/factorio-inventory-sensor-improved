@@ -86,6 +86,6 @@
 ----------------------------------------------------------------------------------------------------
 ---@class inventory_sensor.SupportedEntities
 ---@field supported_entities table<string, table<string, inventory_sensor.ScanTemplate>>
----@field contributors table<string, inventory_sensor.Contributor>
+---@field contributors table<string, inventory_sensor.ContributorInfo>
 ---@field blacklist table<string, string>
 ---@field global_contributors string[]

@@ -27,6 +27,19 @@
       ".portal/screenshot-11.png",
       ".portal/screenshot-12.png"
     ],
-    "sync_portal_details": true
+    "sync_portal_details": true,
+    "ignore": [
+      "claude-issues.md",
+      ".claude/*",
+      "portal/*",
+      "releases/*",
+      "**/*.xcf",
+      "**/.zip",
+      ".git",
+      ".gitattributes",
+      ".gitignore",
+      ".vscode",
+      ".DS_Store"
+    ]
   }
 }

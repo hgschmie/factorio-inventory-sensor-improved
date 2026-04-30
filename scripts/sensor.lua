@@ -3,6 +3,8 @@
 ------------------------------------------------------------------------
 assert(script)
 
+local util = require('util')
+
 local const = require('lib.constants')
 
 local Area = require('stdlib.area.area')

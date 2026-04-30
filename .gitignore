@@ -1,1 +1,6 @@
-releases
+/releases/
+/.vs/
+*.bak
+/.vscode/
+/.claude
+claude-issues.md
