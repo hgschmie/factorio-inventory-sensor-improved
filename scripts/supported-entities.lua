@@ -81,9 +81,9 @@ local contributors = {
             inventory_status.availableFluidsCount = (amount ~= 0) and 1 or 0
             inventory_status.totalFluidAmount = amount
 
-            if #scan_entity.fluidbox >= i then
+            if scan_entity.fluids_count >= i then
                 -- entity with fluid boxes (e.g. a chemical plant)
-                local capacity = scan_entity.fluidbox.get_capacity(i)
+                local capacity = scan_entity.get_fluid_capacity(i)
                 inventory_status.totalFluidsCount = (capacity > 0) and 1 or 0
                 inventory_status.totalFluidCapacity = capacity
                 inventory_status.emptyFluidsCount = inventory_status.totalFluidsCount - inventory_status.availableFluidsCount
