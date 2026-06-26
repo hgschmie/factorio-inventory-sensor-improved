@@ -6,7 +6,7 @@
 ---@field other_mods table<string, string>
 ---@field SensorController inventory_sensor.Controller
 ---@field Gui inventory_sensor.Gui?
-This = {
+local This = {
     other_mods = {
         ['even-pickier-dollies'] = 'picker-dollies',
     },
