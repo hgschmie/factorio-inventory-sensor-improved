@@ -182,7 +182,7 @@ local function register_events()
     Framework.ghost_manager:registerForName(const.inventory_sensor_name)
 
     -- manage tombstones for undo/redo and dead entities
-    Framework.tombstone:registerCallback(const.inventory_sensor_name, {
+    Framework.Tombstone:registerCallback(const.inventory_sensor_name, {
         create_tombstone = This.SensorController.serialize_config,
         apply_tombstone = Framework.ghost_manager.mapTombstoneToGhostTags,
     })
