@@ -7,8 +7,8 @@
 ---@field SensorController inventory_sensor.Controller
 ---@field Gui inventory_sensor.Gui?
 local This = {
-    other_mods = {
-        ['even-pickier-dollies'] = 'picker-dollies',
+    remote_apis = {
+        ['PickerDollies'] = 'picker-dollies',
     },
 }
 
