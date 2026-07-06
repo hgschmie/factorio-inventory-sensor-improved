@@ -7,6 +7,7 @@ local Event = require('stdlib.event.event')
 local Player = require('stdlib.event.player')
 
 local Matchers = require('framework.matchers')
+local Ticker = require('framework.ticker')
 
 local const = require('lib.constants')
 
@@ -18,29 +19,29 @@ local Migration = require('scripts.migration')
 --------------------------------------------------------------------------------
 
 ---@param event EventData.on_built_entity | EventData.on_robot_built_entity | EventData.script_raised_revive | EventData.script_raised_built
-local function onEntityCreated(event)
+local function on_entity_created(event)
     local entity = event and event.entity
-    assert(entity and entity.valid)
+    if not (entity and entity.valid) then return end
 
-    -- register entity for destruction
-    script.register_on_object_destroyed(entity)
-
-    local player_index = event.player_index
+    ---@type Tags?
     local tags = event.tags
 
-    local entity_ghost = Framework.ghost_manager:findGhostForEntity(entity)
+    local config = nil
+
+    local entity_ghost = Framework.Ghost:findGhostForEntity(entity)
     if entity_ghost then
-        player_index = player_index or entity_ghost.player_index
         tags = tags or entity_ghost.tags or {}
     end
 
-    local config = tags and tags[const.config_tag_name]
+    if tags then
+        config = This.SensorController.deserialize(tags)
+    end
 
     This.SensorController:create(entity, config)
 end
 
 ---@param event EventData.on_player_mined_entity | EventData.on_robot_mined_entity | EventData.on_entity_died | EventData.script_raised_destroy
-local function onEntityDeleted(event)
+local function on_entity_deleted(event)
     local entity = event.entity
     if not (entity and entity.valid) then return end
     assert(entity.unit_number)
@@ -49,18 +50,11 @@ local function onEntityDeleted(event)
     Framework.gui_manager:destroyGuiByEntityId(entity.unit_number)
 end
 
----@param event EventData.on_object_destroyed
-local function onObjectDestroyed(event)
-    -- main entity destroyed
-    This.SensorController:destroy(event.useful_id)
-    Framework.gui_manager:destroyGuiByEntityId(event.useful_id)
-end
-
 --------------------------------------------------------------------------------
 -- Entity move / rotate
 --------------------------------------------------------------------------------
 
-local function onEntityMoved(event)
+local function on_entity_moved(event)
     local entity = event and event.entity
     if not (entity and entity.valid) then return end
     This.SensorController:move(entity.unit_number)
@@ -71,7 +65,7 @@ end
 --------------------------------------------------------------------------------
 
 ---@param event EventData.on_entity_settings_pasted
-local function onEntitySettingsPasted(event)
+local function on_entity_settings_pasted(event)
     local player = Player.get(event.player_index)
 
     if not (player and player.valid and player.force == event.source.force and player.force == event.destination.force) then return end
@@ -89,7 +83,7 @@ end
 --------------------------------------------------------------------------------
 
 ---@param event EventData.on_entity_cloned
-local function onEntityCloned(event)
+local function on_entity_cloned(event)
     if not (event.source and event.source.valid and event.destination and event.destination.valid) then return end
 
     local src_data = This.SensorController:entity(event.source.unit_number)
@@ -102,7 +96,7 @@ end
 -- Configuration changes (runtime and startup)
 --------------------------------------------------------------------------------
 
-local function onConfigurationChanged()
+local function on_configuration_changed()
     This.SensorController:init()
 
     -- enable inventory sensor if circuit network is researched.
@@ -129,30 +123,51 @@ end
 -- Ticker
 --------------------------------------------------------------------------------
 
-local function onTick()
-    local interval = Framework.settings:runtime_setting(const.settings_update_interval_name) or 10
-    local entities = This.SensorController:entities()
-    local process_count = math.ceil(table_size(entities) / interval)
-    local index = storage.last_tick_entity
-    if index and not entities[index] then index = nil end
-    local entity
+--------------------------------------------------------------------------------
+-- ticker
+--------------------------------------------------------------------------------
 
-    if table_size(entities) == 0 then
-        index = nil
-    else
-        repeat
-            index, entity = next(entities, index)
-            if entity and entity.sensor_entity and entity.sensor_entity.valid then
-                if Sensor.tick(entity) then
-                    process_count = process_count - 1
-                end
-            elseif index then
-                This.SensorController:destroy(index)
-            end
-        until process_count == 0 or not index
+---@param keys ff2.ticker.TickerContext
+---@param values ff2.ticker.TickerContext
+---@return any
+local function ticker_unit_of_work(keys, values)
+    ---@type inventory_sensor.Data
+    local sensor = values.sensor
+    if sensor and sensor.sensor_entity and sensor.sensor_entity.valid then
+        if Sensor.tick(sensor) then return end
+    elseif keys.sensor then
+        This.SensorController:destroy(keys.sensor)
+    end
+end
+
+local function on_tick()
+    local ticker_info = Ticker.getTicker('ticker')
+    local tick_interval = Framework.settings:runtime_setting(const.settings_update_interval_name) or 10
+
+    local entities = This.SensorController:entities()
+    local entity_count = table_size(entities)
+    if entity_count == 0 then return end
+
+    local entities_per_tick = math.max(1, math.ceil(entity_count / tick_interval)) -- at least one
+
+    local context = ticker_info.context or {}
+
+    local iterator = Ticker.createWorkIterator {
+        context = context,
+        field_name = 'sensor',
+        iterable = entities,
+    }
+
+    local increment = false
+
+    while (not increment) and entities_per_tick > 0 do
+        _, increment = iterator.process(ticker_unit_of_work)
+
+        entities_per_tick = entities_per_tick - 1
     end
 
-    storage.last_tick_entity = index
+    ticker_info.context = context
+    ticker_info.last_tick = game.tick
 end
 
 --------------------------------------------------------------------------------
@@ -163,35 +178,34 @@ local function register_events()
     local fi_entity_filter = Matchers:matchEventEntityName(const.inventory_sensor_name)
 
     -- Configuration changes (runtime and startup)
-    Event.on_configuration_changed(onConfigurationChanged)
+    Event.on_configuration_changed(on_configuration_changed)
 
-    Event.register(defines.events.on_tick, onTick)
+    Event.register(defines.events.on_tick, on_tick)
 
     -- entity creation/deletion
-    Event.register(Matchers.CREATION_EVENTS, onEntityCreated, fi_entity_filter)
-    Event.register(Matchers.DELETION_EVENTS, onEntityDeleted, fi_entity_filter)
+    Event.register(Matchers.CREATION_EVENTS, on_entity_created, fi_entity_filter)
+    Event.register(Matchers.DELETION_EVENTS, on_entity_deleted, fi_entity_filter)
 
-    -- entity destroy
-    Event.register(defines.events.on_object_destroyed, onObjectDestroyed)
-
-    Event.register(defines.events.on_player_rotated_entity, onEntityMoved, fi_entity_filter)
+    Event.register(defines.events.on_player_rotated_entity, on_entity_moved, fi_entity_filter)
 
     -- Manage blueprint configuration setting
     Framework.blueprint:registerCallbackForNames(const.inventory_sensor_name, This.SensorController.serialize_config)
 
-    Framework.ghost_manager:registerForName(const.inventory_sensor_name)
+    Framework.Ghost:registerForName {
+        names = const.inventory_sensor_name
+    }
 
     -- manage tombstones for undo/redo and dead entities
     Framework.Tombstone:registerCallback(const.inventory_sensor_name, {
         create_tombstone = This.SensorController.serialize_config,
-        apply_tombstone = Framework.ghost_manager.mapTombstoneToGhostTags,
+        apply_tombstone = Framework.Ghost.mapTombstoneToGhostTags,
     })
 
     -- Entity settings pasting
-    Event.register(defines.events.on_entity_settings_pasted, onEntitySettingsPasted, fi_entity_filter)
+    Event.register(defines.events.on_entity_settings_pasted, on_entity_settings_pasted, fi_entity_filter)
 
     -- Entity cloning
-    Event.register(defines.events.on_entity_cloned, onEntityCloned, fi_entity_filter)
+    Event.register(defines.events.on_entity_cloned, on_entity_cloned, fi_entity_filter)
 end
 
 --------------------------------------------------------------------------------

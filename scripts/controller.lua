@@ -112,6 +112,13 @@ function InventorySensorController.serialize_config(entity)
     }
 end
 
+---@param tags Tags?
+function InventorySensorController.deserialize(tags)
+    if not (tags and tags[const.config_tag_name]) then return nil end
+
+    return tags[const.config_tag_name]
+end
+
 ----------------------------------------------------------------------------------------------------
 
 return InventorySensorController
