@@ -1,6 +1,6 @@
 {
   "name": "inventory-sensor-improved",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "title": "Improved Inventory Sensor",
   "description": "Shows inventory information of various entities.",
   "author": "hgschmie",
@@ -11,7 +11,7 @@
     "base >= 2.0.48"
   ],
   "package": {
-    "git_publish_branch": "main",
+    "git_publish_branch": "2.0-maintenance",
     "readme": "README.md",
     "gallery": [
       ".portal/screenshot-1.png",

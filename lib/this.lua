@@ -3,12 +3,12 @@
 ----------------------------------------------------------------------------------------------------
 
 ---@class inventory_sensor.Mod
----@field other_mods table<string, string>
+---@field remote_apis table<string, string>
 ---@field SensorController inventory_sensor.Controller
 ---@field Gui inventory_sensor.Gui?
 local This = {
     remote_apis = {
-        ['PickerDollies'] = 'picker-dollies',
+        PickerDollies = 'picker-dollies',
     },
 }
 
