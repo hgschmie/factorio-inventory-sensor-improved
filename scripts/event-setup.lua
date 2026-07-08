@@ -123,10 +123,6 @@ end
 -- Ticker
 --------------------------------------------------------------------------------
 
---------------------------------------------------------------------------------
--- ticker
---------------------------------------------------------------------------------
-
 ---@param keys ff2.ticker.TickerContext
 ---@param values ff2.ticker.TickerContext
 ---@return any
@@ -158,11 +154,8 @@ local function on_tick()
         iterable = entities,
     }
 
-    local increment = false
-
-    while (not increment) and entities_per_tick > 0 do
-        _, increment = iterator.process(ticker_unit_of_work)
-
+    while entities_per_tick > 0 do
+        iterator.process(ticker_unit_of_work)
         entities_per_tick = entities_per_tick - 1
     end
 

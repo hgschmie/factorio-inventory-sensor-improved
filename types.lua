@@ -37,7 +37,7 @@
 ---@field primary defines.inventory? Primary Inventory, enable by default
 ---@field delegate (fun(delegate: LuaEntity?):LuaEntity?)? Allows a template to declare a delegate to scan
 
-    ---@class inventory_sensor.Config
+---@class inventory_sensor.Config
 ---@field enabled boolean
 ---@field scan_entity_id integer?
 ---@field contributors table<string, inventory_sensor.ContributorInfo> List of activated contributors in the GUI
