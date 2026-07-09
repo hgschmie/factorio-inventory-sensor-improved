@@ -30,7 +30,7 @@ local function on_entity_created(event)
 
     local entity_ghost = Framework.Ghost:findGhostForEntity(entity)
     if entity_ghost then
-        tags = tags or entity_ghost.tags or {}
+        tags = tags or entity_ghost.tags
     end
 
     if tags then
