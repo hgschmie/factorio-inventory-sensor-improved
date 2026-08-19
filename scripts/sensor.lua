@@ -12,6 +12,8 @@ local Direction = require('stdlib.area.direction')
 local Position = require('stdlib.area.position')
 local table = require('stdlib.utils.table')
 
+local DEBUG_MODE = Framework.settings:get_debug_level() >= 1
+
 ---@type inventory_sensor.SupportedEntities
 local sensor_entities = require('scripts.supported-entities')
 
@@ -307,7 +309,7 @@ function InventorySensor.scan(sensor_data, force)
 
         local entities = sensor_data.sensor_entity.surface.find_entities(sensor_data.scan_area)
 
-        if Framework.settings:startup_setting('debug_mode') then
+        if DEBUG_MODE then
             local color = { r = 0.5, g = 0.5, b = 1 }
             rendering.draw_rectangle {
                 color = color,
@@ -471,7 +473,7 @@ function InventorySensor.load(sensor_data, force)
         end
     end
 
-    if Framework.settings:startup_setting('debug_mode') then
+    if DEBUG_MODE then
         rendering.draw_rectangle {
             color = { r = 1, g = 1, b = 0.3 },
             surface = sensor_data.sensor_entity.surface,
@@ -525,7 +527,7 @@ function InventorySensor.connect(sensor_data, entity)
     InventorySensor.update_supported(sensor_data, scan_controller)
     InventorySensor.load(sensor_data, true)
 
-    if Framework.settings:startup_setting('debug_mode') then
+    if DEBUG_MODE then
         rendering.draw_rectangle {
             color = { r = 0.3, g = 1, b = 0.3 },
             surface = sensor_data.sensor_entity.surface,
@@ -555,7 +557,7 @@ function InventorySensor.disconnect(sensor_data)
     local section = InventorySensor.get_section(sensor_data)
     section.filters = {}
 
-    if Framework.settings:startup_setting('debug_mode') then
+    if DEBUG_MODE then
         rendering.draw_rectangle {
             color = { r = 1, g = 0.3, b = 0.3 },
             surface = sensor_data.sensor_entity.surface,

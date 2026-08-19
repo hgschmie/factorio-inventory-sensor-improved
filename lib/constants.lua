@@ -24,6 +24,7 @@ local Constants = {}
 --------------------------------------------------------------------------------
 
 Constants.prefix = 'hps__is-'
+Constants.log_prefix = 'IS'
 Constants.name = 'inventory-sensor'
 Constants.root = '__inventory-sensor-improved__'
 Constants.gfx_location = Constants.root .. '/graphics/'
@@ -34,23 +35,6 @@ Constants.scan_frequency = scan_frequency
 Constants.debug_lifetime = 10
 Constants.debug_scan_lifetime = 2
 
---------------------------------------------------------------------------------
--- Framework initializer
---------------------------------------------------------------------------------
-
----@return FrameworkConfig config
-function Constants.framework_init()
-    return {
-        -- prefix is the internal mod prefix
-        prefix = Constants.prefix,
-        -- name is a human readable name
-        name = Constants.name,
-        -- The filesystem root.
-        root = Constants.root,
-    }
-end
-
---------------------------------------------------------------------------------
 -- Path and name helpers
 --------------------------------------------------------------------------------
 
