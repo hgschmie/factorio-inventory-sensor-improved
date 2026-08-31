@@ -16,7 +16,7 @@ local recipe_prototype = {
     }
 }
 
----@type data.RecipePrototype
+---@type RecipePrototype
 local recipe = table.merge(util.copy(data.raw.recipe['constant-combinator']), recipe_prototype)
 
 data:extend { recipe }
