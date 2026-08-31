@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 3.1.0
-Date: ????
+Date: 2026-08-30
   Changes:
     - Add a stack reporting mode with configurable rounding for partial stacks
   Bugfixes:
