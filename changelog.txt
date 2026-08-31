@@ -1,8 +1,10 @@
 ---------------------------------------------------------------------------------------------------
-Version: 3.0.6
+Version: 3.1.0
 Date: ????
   Changes:
     - Add a stack reporting mode with configurable rounding for partial stacks
+  Bugfixes:
+    - Reconfigure available inventories when opening the GUI.
 ---------------------------------------------------------------------------------------------------
 Version: 3.0.5
 Date: 2026-08-20

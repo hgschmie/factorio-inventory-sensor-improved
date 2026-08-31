@@ -45,7 +45,7 @@ local InventorySensor = {
 
 ---@param entity LuaEntity?
 ---@return inventory_sensor.ScanTemplate?
-local function locate_scan_template(entity)
+function InventorySensor.locateScanTemplate(entity)
     if not (entity and entity.valid) then return nil end
     assert(entity)
 
@@ -374,7 +374,7 @@ function InventorySensor.load(sensor_data, force)
 
     local scan_entity = sensor_data.scan_entity
 
-    local scan_template = locate_scan_template(scan_entity)
+    local scan_template = InventorySensor.locateScanTemplate(scan_entity)
     if not scan_template then return false end
 
     -- some entities (e.g. a cargo bay) want to actually delegate the entity to scan
@@ -510,12 +510,12 @@ function InventorySensor.connect(sensor_data, entity)
     -- reconnect to the same entity
     if sensor_data.scan_entity and sensor_data.scan_entity.valid and sensor_data.scan_entity.unit_number == entity.unit_number then return true end
 
-    local scan_controller = locate_scan_template(entity)
-    if not scan_controller then return false end
+    local scan_template = InventorySensor.locateScanTemplate(entity)
+    if not scan_template then return false end
 
     sensor_data.state.status = sensor_data.sensor_entity.status
     sensor_data.scan_entity = entity
-    sensor_data.scan_interval = scan_controller.interval or const.scan_frequency.stationary -- unset scan interval -> stationary
+    sensor_data.scan_interval = scan_template.interval or const.scan_frequency.stationary -- unset scan interval -> stationary
     sensor_data.config.scan_entity_id = entity.unit_number
 
     local entity_key = get_entity_key(entity)
@@ -526,7 +526,7 @@ function InventorySensor.connect(sensor_data, entity)
 
     sensor_data.state.reconnect_key = entity_key
 
-    InventorySensor.update_supported(sensor_data, scan_controller)
+    InventorySensor.update_supported(sensor_data, scan_template)
     InventorySensor.load(sensor_data, true)
 
     if DEBUG_MODE then

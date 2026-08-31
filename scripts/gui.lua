@@ -379,7 +379,7 @@ local function update_config_gui_state(gui, sensor_data)
     local entity_status = gui:findElement('entity-status')
     entity_status.caption = { tools.STATUS_NAMES[sensor_status] }
 
-    local status = gui:findElement('status')
+    local status = assert(gui:findElement('status'))
     if sensor_data.config.enabled then
         if (sensor_data.scan_entity and sensor_data.scan_entity.valid) then
             status.caption = { const:locale('reading'), sensor_data.scan_entity.localised_name, sensor_data.scan_entity.unit_number }
@@ -584,6 +584,9 @@ function Gui.onGuiOpened(event)
         player.opened = nil
         return
     end
+
+    local scan_template = Sensor.locateScanTemplate(sensor_data.scan_entity)
+    Sensor.update_supported(sensor_data, scan_template)
 
     ---@class inventory_sensor.GuiContext
     ---@field last_config inventory_sensor.Config?
