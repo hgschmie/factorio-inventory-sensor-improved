@@ -36,12 +36,23 @@ end
 
 ---@param amount number
 ---@param contributor_info inventory_sensor.ContributorInfo?
+---@param stack_size integer?
 ---@return integer result
-local function compute_amount(amount, contributor_info)
+local function compute_amount(amount, contributor_info, stack_size)
     if contributor_info then
-        local quantity = contributor_info.mode == 'quantity' or false
+        local mode = contributor_info.mode
         local inverted = contributor_info.inverted and true or false
-        amount = (quantity and amount or 1) * (inverted and -1 or 1)
+
+        if mode == 'stack' then
+            if stack_size then
+                amount = amount / stack_size
+                amount = contributor_info.round_up and math.ceil(amount) or math.floor(amount)
+            end
+        elseif mode ~= 'quantity' then
+            amount = 1
+        end
+
+        amount = amount * (inverted and -1 or 1)
     end
 
     return math.floor(amount + .5)
@@ -220,7 +231,8 @@ for name, index in pairs(defines.inventory) do
 
         for _, item in pairs(inventory.get_contents()) do
             if item.count > 0 then
-                local amount = compute_amount(item.count, contributor_info)
+                local item_prototype = assert(prototypes.item[item.name])
+                local amount = compute_amount(item.count, contributor_info, item_prototype.stack_size)
                 contributor.sink { value = { name = item.name, type = 'item', quality = item.quality or 'normal' }, min = amount }
                 inventory_status.totalItemCount = inventory_status.totalItemCount + amount -- accumulate the amount of all items
             end

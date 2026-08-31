@@ -109,6 +109,7 @@ function InventorySensor.update_supported(sensor_data, scan_template)
             enabled = args.always_enabled or false,
             mode = 'quantity',
             inverted = false,
+            round_up = false,
         }
 
         sensor_data.config.contributors[args.key] = contributor_info
@@ -209,6 +210,7 @@ function InventorySensor.reconfigure(sensor_data, config)
             enabled = true,
             mode = 'quantity',
             inverted = false,
+            round_up = false,
         }
     end
 end

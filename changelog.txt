@@ -2,6 +2,7 @@
 Version: 3.0.6
 Date: ????
   Changes:
+    - Add a stack reporting mode with configurable rounding for partial stacks
 ---------------------------------------------------------------------------------------------------
 Version: 3.0.5
 Date: 2026-08-20

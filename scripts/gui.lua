@@ -38,6 +38,7 @@ local function get_gui_event_definition()
             onToggleInventorySelect = Gui.onToggleInventorySelect,
             onToggleChangeRequestMode = Gui.onToggleChangeRequestMode,
             onToggleRequestInvert = Gui.onToggleRequestInvert,
+            onToggleStackRounding = Gui.onToggleStackRounding,
         },
         callback = Gui.guiUpdater,
     }
@@ -351,6 +352,16 @@ function Gui.onToggleRequestInvert(event, gui)
     selected.inverted = event.element.state
 end
 
+---@param event EventData.on_gui_switch_state_changed
+---@param gui framework.gui
+function Gui.onToggleStackRounding(event, gui)
+    local sensor_data = This.SensorController:entity(gui.entity_id)
+    if not sensor_data then return end
+
+    local selected = assert(sensor_data.config.contributors[event.element.tags.inventory_name])
+    selected.round_up = event.element.switch_state == 'right'
+end
+
 ----------------------------------------------------------------------------------------------------
 -- GUI state updater
 ----------------------------------------------------------------------------------------------------
@@ -406,7 +417,7 @@ local function update_config_gui_state(gui, sensor_data)
             local inventory_config = assert(sensor_data.config.contributors[name])
             local config_enabled = enabled and (contributor_state and true or false)
 
-            -- each row has three children: checkbox, radiobuttons and invert
+            -- each row has three children: checkbox, report mode, and value options
             gui:addChildElements(inventory_element, {
                 {
                     type = 'checkbox',
@@ -446,17 +457,47 @@ local function update_config_gui_state(gui, sensor_data)
                             enabled = config_enabled and inventory_config.enabled,
                             state = inventory_config.mode == 'one',
                         },
+                        {
+                            type = 'radiobutton',
+                            caption = { '', { const:locale('report-stack') }, ' [img=info]' },
+                            tooltip = { const:locale('report-stack-description') },
+                            name = name .. '-stack',
+                            elem_tags = {
+                                inventory_name = name,
+                                report_state = 'stack',
+                            },
+                            handler = { [defines.events.on_gui_checked_state_changed] = gui.gui_events.onToggleChangeRequestMode },
+                            enabled = config_enabled and inventory_config.enabled,
+                            state = inventory_config.mode == 'stack',
+                        },
                     }
                 },
                 {
-                    type = 'checkbox',
-                    caption = { '', { const:locale('report-invert') }, ' [img=info]' },
-                    tooltip = { const:locale('report-invert-description') },
-                    name = name .. '-invert',
-                    elem_tags = { inventory_name = name, },
-                    handler = { [defines.events.on_gui_checked_state_changed] = gui.gui_events.onToggleRequestInvert },
-                    enabled = config_enabled and inventory_config.enabled,
-                    state = inventory_config.inverted or false,
+                    type = 'flow',
+                    direction = 'vertical',
+                    children = {
+                        {
+                            type = 'checkbox',
+                            caption = { '', { const:locale('report-invert') }, ' [img=info]' },
+                            tooltip = { const:locale('report-invert-description') },
+                            name = name .. '-invert',
+                            elem_tags = { inventory_name = name, },
+                            handler = { [defines.events.on_gui_checked_state_changed] = gui.gui_events.onToggleRequestInvert },
+                            enabled = config_enabled and inventory_config.enabled,
+                            state = inventory_config.inverted or false,
+                        },
+                        {
+                            type = 'switch',
+                            name = name .. '-stack-rounding',
+                            left_label_caption = { const:locale('report-round-down') },
+                            right_label_caption = { const:locale('report-round-up') },
+                            tooltip = { const:locale('report-stack-rounding-description') },
+                            elem_tags = { inventory_name = name, },
+                            handler = { [defines.events.on_gui_switch_state_changed] = gui.gui_events.onToggleStackRounding },
+                            enabled = config_enabled and inventory_config.enabled and inventory_config.mode == 'stack',
+                            switch_state = inventory_config.round_up and 'right' or 'left',
+                        },
+                    },
                 },
             })
         end

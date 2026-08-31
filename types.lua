@@ -19,13 +19,14 @@
 ---@field status_sink fun(inventory: inventory_sensor.InventoryStatus)
 ---@field contributor_info inventory_sensor.ContributorInfo?
 
----@alias inventory_sensor.TypeMode 'one'|'quantity'
+---@alias inventory_sensor.TypeMode 'one'|'quantity'|'stack'
 
 ---@class inventory_sensor.ContributorInfo
 ---@field enabled boolean?
 ---@field name LocalisedString
 ---@field mode inventory_sensor.TypeMode?
 ---@field inverted boolean?
+---@field round_up boolean? Round partial stacks up when mode is 'stack'
 
 ---@class inventory_sensor.ScanTemplate
 ---@field interval inventory_sensor.scan_frequency Scan frequency

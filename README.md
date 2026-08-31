@@ -9,10 +9,10 @@ For most entities, it reads the main inventory (or input and output for assembli
 
 ## Features
 
-Version 2.0.0 is a major rewrite:
+Version 2.0.0 introduced a major rewrite. The current version supports:
 
 * enable / disable any inventory that an entity has. Fluids, Grid etc. are shown as inventories
-* signals can be inverted and just return 1 instead of the actual value
+* signals can be inverted and report the item quantity, 1, or the number of stacks (rounded up or down)
 * GUI provides updating view of the signals created by the sensor
 * supports many more entities (pumps, heat-pipes, asteroid collector)
 * can be rotated and moved (with [Even Pickier Dollies](https://mods.factorio.com/mod/even-pickier-dollies))
