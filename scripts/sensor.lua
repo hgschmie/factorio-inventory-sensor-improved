@@ -81,8 +81,10 @@ end
 -- Create a set of contributors (in state) and a subset that is configurable (in config).
 -- Reconnect with and existing config if the same type of entity was reconnected
 ---@param sensor_data inventory_sensor.Data
----@param scan_template inventory_sensor.ScanTemplate
-function InventorySensor.update_supported(sensor_data, scan_template)
+---@param scan_template inventory_sensor.ScanTemplate?
+function InventorySensor.updateSupported(sensor_data, scan_template)
+    if not scan_template then return end
+
     -- some entities (e.g. cargo bay) delegate to a different entity
     local scan_entity = scan_template.delegate and scan_template.delegate(sensor_data.scan_entity) or sensor_data.scan_entity
 
@@ -526,7 +528,7 @@ function InventorySensor.connect(sensor_data, entity)
 
     sensor_data.state.reconnect_key = entity_key
 
-    InventorySensor.update_supported(sensor_data, scan_template)
+    InventorySensor.updateSupported(sensor_data, scan_template)
     InventorySensor.load(sensor_data, true)
 
     if DEBUG_MODE then

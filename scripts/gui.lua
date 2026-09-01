@@ -586,7 +586,7 @@ function Gui.onGuiOpened(event)
     end
 
     local scan_template = Sensor.locateScanTemplate(sensor_data.scan_entity)
-    Sensor.update_supported(sensor_data, scan_template)
+    Sensor.updateSupported(sensor_data, scan_template)
 
     ---@class inventory_sensor.GuiContext
     ---@field last_config inventory_sensor.Config?
