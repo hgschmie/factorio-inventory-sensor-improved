@@ -39,4 +39,26 @@ function This.framework_init()
     }
 end
 
+
+--- Setup the global inventory sensor data structure.
+function This:init()
+    ---@type inventory_sensor.Storage
+    storage.is_data = storage.is_data or {
+        is = {},
+    }
+end
+
+
+------------------------------------------------------------------------
+-- Storage Management
+------------------------------------------------------------------------
+
+---@class inventory_sensor.Storage
+---@field is inventory_sensor.Data[]
+
+---@return inventory_sensor.Storage
+function This:storage()
+    return assert(storage.is_data)
+end
+
 return This

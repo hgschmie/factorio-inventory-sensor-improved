@@ -13,43 +13,32 @@ local Sensor = require('scripts.sensor')
 local InventorySensorController = {}
 
 ------------------------------------------------------------------------
--- init setup
-------------------------------------------------------------------------
-
---- Setup the global inventory sensor data structure.
-function InventorySensorController:init()
-    storage.is_data = storage.is_data or {
-        is = {},
-        count = 0,
-    }
-end
-
-------------------------------------------------------------------------
 -- attribute getters/setters
 ------------------------------------------------------------------------
 
 --- Returns data for all inventory sensors.
 ---@return inventory_sensor.Data[] entities
 function InventorySensorController:entities()
-    return storage.is_data.is
+    return This:storage().is
 end
 
 --- Returns data for a given inventory sensor
 ---@param entity_id integer main unit number (== entity id)
 ---@return inventory_sensor.Data? entity
 function InventorySensorController:entity(entity_id)
-    return storage.is_data.is[entity_id]
+    return This:storage().is[entity_id]
 end
 
 --- Sets or clears a inventory sensor entity
 ---@param entity_id integer The unit_number of the primary
 ---@param sensor_data inventory_sensor.Data?
 function InventorySensorController:setEntity(entity_id, sensor_data)
-    assert((sensor_data ~= nil and storage.is_data.is[entity_id] == nil) or sensor_data == nil)
+    local is_data = This:storage()
+    assert((sensor_data ~= nil and is_data.is[entity_id] == nil) or sensor_data == nil)
 
     if (sensor_data) then assert(Sensor.validate(sensor_data, entity_id)) end
 
-    storage.is_data.is[entity_id] = sensor_data
+    is_data.is[entity_id] = sensor_data
 end
 
 ------------------------------------------------------------------------
