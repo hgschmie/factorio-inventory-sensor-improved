@@ -33,12 +33,13 @@ end
 ---@param entity_id integer The unit_number of the primary
 ---@param sensor_data inventory_sensor.Data?
 function InventorySensorController:setEntity(entity_id, sensor_data)
-    local is_data = This:storage()
-    assert((sensor_data ~= nil and is_data.is[entity_id] == nil) or sensor_data == nil)
+    local is = self:entities()
+
+    assert((sensor_data ~= nil and is[entity_id] == nil) or sensor_data == nil)
 
     if (sensor_data) then assert(Sensor.validate(sensor_data, entity_id)) end
 
-    is_data.is[entity_id] = sensor_data
+    is[entity_id] = sensor_data
 end
 
 ------------------------------------------------------------------------
